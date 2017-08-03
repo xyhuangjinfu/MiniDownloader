@@ -9,15 +9,13 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.concurrent.Callable;
 
-import cn.hjf.downloader.Task;
-
 /**
  * Created by huangjinfu on 2017/8/2.
  */
 
-public class HttpWorker implements Callable<Void> {
+class HttpWorker implements Callable<Pair<Long, Long>> {
 
-    private Task task;
+    private HttpTask httpTask;
     private Pair<Long, Long> range;
 
     private HttpDirector.ProgressUpdateListener progressUpdateListener;
@@ -25,27 +23,27 @@ public class HttpWorker implements Callable<Void> {
     private byte[] buffer = new byte[1024 * 1024];
 
     public HttpWorker(
-            @NonNull Task task,
+            @NonNull HttpTask httpTask,
             @NonNull Pair<Long, Long> range,
             @NonNull HttpDirector.ProgressUpdateListener progressUpdateListener) {
-        if (task == null || range == null || progressUpdateListener == null) {
+        if (httpTask == null || range == null || progressUpdateListener == null) {
             throw new IllegalArgumentException("Some parameters must not be null, please check again!");
         }
-        this.task = task;
+        this.httpTask = httpTask;
         this.range = range;
         this.progressUpdateListener = progressUpdateListener;
     }
 
     @Override
-    public Void call() throws Exception {
-        URL url = new URL(task.getUrlStr());
+    public Pair<Long, Long> call() throws Exception {
+        URL url = new URL(httpTask.getTask().getUrlStr());
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestProperty("Range", "bytes=" + range.first + "-" + range.second);
         if (connection.getResponseCode() != HttpURLConnection.HTTP_PARTIAL) {
             return null;
         }
         readAndWrite(connection);
-        return null;
+        return range;
     }
 
     private boolean readAndWrite(HttpURLConnection connection) {
@@ -54,7 +52,7 @@ public class HttpWorker implements Callable<Void> {
         try {
             bis = new BufferedInputStream(connection.getInputStream());
 
-            randomAccessFile = new RandomAccessFile(task.getFilePath(), "rw");
+            randomAccessFile = new RandomAccessFile(httpTask.getTask().getFilePath(), "rw");
             randomAccessFile.seek(range.first);
 
             int count;

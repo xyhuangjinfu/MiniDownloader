@@ -14,9 +14,9 @@ import java.util.concurrent.CompletionService;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 
-import cn.hjf.downloader.ResourceInfo;
 import cn.hjf.downloader.Task;
 import cn.hjf.downloader.exception.FileSystemException;
 import cn.hjf.downloader.util.FileUtil;
@@ -25,14 +25,14 @@ import cn.hjf.downloader.util.FileUtil;
  * Created by huangjinfu on 2017/8/2.
  */
 
-public class HttpDirector implements Callable<Void> {
+class HttpDirector implements Callable<Void> {
 
     private static final String TAG = "MD-HttpDirector";
 
     private static final int WORKER_THREAD_POOL_SIZE = Runtime.getRuntime().availableProcessors();
     private static final int MAX_TASK_LENGTH = 1024 * 1024 * 2;
 
-    private Task task;
+    private HttpTask httpTask;
 
     private List<HttpWorker> workerList = new ArrayList<>();
     private List<ProgressUpdateListener> progressUpdateListenerList = new ArrayList<>();
@@ -43,7 +43,8 @@ public class HttpDirector implements Callable<Void> {
     private CompletionService completionService;
 
     public HttpDirector(Task task) {
-        this.task = task;
+        httpTask = new HttpTask();
+        httpTask.setTask(task);
         completionService = new ExecutorCompletionService(workerExecutor);
     }
 
@@ -52,26 +53,26 @@ public class HttpDirector implements Callable<Void> {
         long start = SystemClock.uptimeMillis();
 
         /* Get resource info. */
-        ResourceInfo resourceInfo = getResourceInfo(task.getUrlStr());
-        if (resourceInfo == null) {
+        HttpResource resource = getResourceInfo(httpTask.getTask().getUrlStr());
+        if (resource == null) {
             throw new Exception("resourceInfo == null");
         }
-        task.setResourceInfo(resourceInfo);
+        httpTask.setHttpResource(resource);
 
         /* Create dest file parent dirs. */
-        if (!FileUtil.createParentDirs(task.getFilePath())) {
-            task.getErrorListener().onError(new FileSystemException("cannot create parent dir"));
+        if (!FileUtil.createParentDirs(httpTask.getTask().getFilePath())) {
+            httpTask.getTask().getErrorListener().onError(new FileSystemException("cannot create parent dir"));
             return null;
         }
 
         /* Split tasks. */
-        task.setRanges(splitTask(task.getResourceInfo()));
+        httpTask.getTask().setRanges(splitTask(httpTask.getHttpResource()));
 
         /* Create workers. */
         createWorkers();
 
         /* Notify start download. */
-        task.getListener().onStart();
+        httpTask.getTask().getListener().onStart();
 
         /* Start up download workers. */
         for (int i = 0; i < workerList.size(); i++) {
@@ -80,19 +81,23 @@ public class HttpDirector implements Callable<Void> {
 
         /* Block wait to download finish. */
         for (int i = 0; i < workerList.size(); i++) {
-            completionService.take();
+            Future<Pair<Long, Long>> f = completionService.take();
+            Pair<Long, Long> range = f.get();
+            httpTask.getTask().getRanges().remove(range);
         }
 
         /* Notify finish download. */
-        task.getListener().onFinish();
+        if (httpTask.getTask().getRanges().isEmpty()) {
+            httpTask.getTask().getListener().onFinish();
+        }
 
-        Log.e(TAG, "Download finish, use " + (SystemClock.uptimeMillis() - start) + " ms, urlStr : " + task.getUrlStr());
+        Log.e(TAG, "Download finish, use " + (SystemClock.uptimeMillis() - start) + " ms, urlStr : " + httpTask.getTask().getUrlStr());
 
         return null;
     }
 
     @Nullable
-    private ResourceInfo getResourceInfo(String urlStr) throws Exception {
+    private HttpResource getResourceInfo(String urlStr) throws Exception {
         URL url = new URL(urlStr);
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestMethod("HEAD");
@@ -107,10 +112,10 @@ public class HttpDirector implements Callable<Void> {
         String eTag = connection.getHeaderField("ETag");
         String lastModified = connection.getHeaderField("Last-Modified");
 
-        return new ResourceInfo(contentLength, acceptRanges, eTag, lastModified);
+        return new HttpResource(contentLength, acceptRanges, eTag, lastModified);
     }
 
-    private List<Pair<Long, Long>> splitTask(ResourceInfo resourceInfo) {
+    private List<Pair<Long, Long>> splitTask(HttpResource resourceInfo) {
         /* Http 1.1 only support "bytes" range unit */
         if ("bytes".equals(resourceInfo.getAcceptRanges())) {
             return splitByRanges(resourceInfo);
@@ -119,13 +124,13 @@ public class HttpDirector implements Callable<Void> {
         }
     }
 
-    private List<Pair<Long, Long>> splitWhole(ResourceInfo resourceInfo) {
+    private List<Pair<Long, Long>> splitWhole(HttpResource resourceInfo) {
         List<Pair<Long, Long>> ranges = new ArrayList<>();
         ranges.add(Pair.create(0l, resourceInfo.getContentLength() - 1));
         return ranges;
     }
 
-    private List<Pair<Long, Long>> splitByRanges(ResourceInfo resourceInfo) {
+    private List<Pair<Long, Long>> splitByRanges(HttpResource resourceInfo) {
         long taskLength;
         if (resourceInfo.getContentLength() > WORKER_THREAD_POOL_SIZE * MAX_TASK_LENGTH) {
             taskLength = MAX_TASK_LENGTH;
@@ -151,20 +156,20 @@ public class HttpDirector implements Callable<Void> {
         workerList.clear();
         progressUpdateListenerList.clear();
 
-        for (int i = 0; i < task.getRanges().size(); i++) {
+        for (int i = 0; i < httpTask.getTask().getRanges().size(); i++) {
             ProgressUpdateListener listener = getProgressListener(i);
             progressUpdateListenerList.add(listener);
-            workerList.add(new HttpWorker(task, task.getRanges().get(i), listener));
+            workerList.add(new HttpWorker(httpTask, httpTask.getTask().getRanges().get(i), listener));
         }
 
-        Log.e(TAG, "createWorkers(), urlStr : " + task.getUrlStr() + " , content length : " + task.getResourceInfo().getContentLength() + " , worker count : " + workerList.size());
+        Log.e(TAG, "createWorkers(), urlStr : " + httpTask.getTask().getUrlStr() + " , content length : " + httpTask.getHttpResource().getContentLength() + " , worker count : " + workerList.size());
     }
 
     private ProgressUpdateListener getProgressListener(final int position) {
         return new ProgressUpdateListener() {
             @Override
             public void updateProgress(long count) {
-                task.getListener().onProgress(task.getResourceInfo().getContentLength(), downloadCount.addAndGet(count));
+                httpTask.getTask().getListener().onProgress(httpTask.getHttpResource().getContentLength(), downloadCount.addAndGet(count));
             }
         };
     }

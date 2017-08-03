@@ -1,17 +1,21 @@
-package cn.hjf.downloader;
+package cn.hjf.downloader.http;
+
+import java.io.Serializable;
 
 /**
  * Created by huangjinfu on 2017/8/3.
  */
 
-public class ResourceInfo {
+class HttpResource implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private long contentLength;
     private String acceptRanges;
     private String eTag;
     private String lastModified;
 
-    public ResourceInfo(long contentLength, String acceptRanges, String eTag, String lastModified) {
+    public HttpResource(long contentLength, String acceptRanges, String eTag, String lastModified) {
         this.contentLength = contentLength;
         this.acceptRanges = acceptRanges;
         this.eTag = eTag;
