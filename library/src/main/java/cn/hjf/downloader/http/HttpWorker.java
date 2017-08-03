@@ -1,5 +1,6 @@
 package cn.hjf.downloader.http;
 
+import android.os.Process;
 import android.support.annotation.NonNull;
 import android.support.v4.util.Pair;
 import android.util.Log;
@@ -42,6 +43,8 @@ class HttpWorker implements Callable<Pair<Long, Long>> {
     @Override
     public Pair<Long, Long> call() throws Exception {
         Log.e(TAG, "HttpWorker run, urlStr : " + task.getUrlStr() + " , range : " + range.toString());
+
+        Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
 
         URL url = new URL(task.getUrlStr());
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
