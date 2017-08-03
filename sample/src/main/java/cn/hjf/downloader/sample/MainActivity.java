@@ -15,7 +15,8 @@ import cn.hjf.downloader.http.HttpDownloader;
 
 public class MainActivity extends AppCompatActivity {
 
-    ProgressBar pb;
+    ProgressBar pb1;
+    ProgressBar pb2;
     private Handler handler = new Handler();
 
     @Override
@@ -23,7 +24,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        pb = (ProgressBar) findViewById(R.id.pb);
+        pb1 = (ProgressBar) findViewById(R.id.pb1);
+        pb2 = (ProgressBar) findViewById(R.id.pb2);
 
         HttpDownloader httpDownloader = new HttpDownloader();
 
@@ -34,6 +36,10 @@ public class MainActivity extends AppCompatActivity {
         String url_1 = "http://haixi.jb51.net:8080/201506/books/sfdl3.rar";
         String path_1 = Environment.getExternalStorageDirectory().getAbsolutePath()
                 + File.separator + "MiniDownloader" + File.separator + "sfdl3.rar";
+
+        String url_2 = "http://haixi.jb51.net:8080/201307/books/http_qwzn_jb51.net.rar";
+        String path_2 = Environment.getExternalStorageDirectory().getAbsolutePath()
+                + File.separator + "MiniDownloader" + File.separator + "http_qwzn_jb51.rar";
 
         try {
 
@@ -50,8 +56,45 @@ public class MainActivity extends AppCompatActivity {
                     handler.post(new Runnable() {
                         @Override
                         public void run() {
-                            pb.setMax(100);
-                            pb.setProgress((int) (progress * 100 / total));
+                            pb1.setMax(100);
+                            pb1.setProgress((int) (progress * 100 / total));
+                        }
+                    });
+                }
+
+                @Override
+                public void onFinish() {
+                    Log.e("O_O", "onFinish");
+                }
+
+            }, new ErrorListener() {
+                @Override
+                public void onInvalidUrl(String urlStr) {
+                    Log.e("O_O", "onInvalidUrl : " + urlStr);
+                }
+
+                @Override
+                public void onError(Exception error) {
+                    Log.e("O_O", "onError : " + error.getMessage());
+                }
+            });
+
+
+            httpDownloader.download(url_2, path_2, new Listener() {
+                @Override
+                public void onStart() {
+                    Log.e("O_O", "onStart");
+                }
+
+                @Override
+                public void onProgress(final long total, final long progress) {
+//                    Log.e("O_O", "onProgress, total : " + total + "  -  progress : " + progress);
+
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            pb2.setMax(100);
+                            pb2.setProgress((int) (progress * 100 / total));
                         }
                     });
                 }
