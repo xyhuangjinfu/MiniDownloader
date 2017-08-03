@@ -32,7 +32,8 @@ class HttpDirector implements Callable<Void> {
     private static final int WORKER_THREAD_POOL_SIZE = Runtime.getRuntime().availableProcessors();
     private static final int MAX_TASK_LENGTH = 1024 * 1024 * 2;
 
-    private HttpTask httpTask;
+    private Task task;
+    private HttpResource httpResource;
 
     private List<HttpWorker> workerList = new ArrayList<>();
     private List<ProgressUpdateListener> progressUpdateListenerList = new ArrayList<>();
@@ -43,8 +44,7 @@ class HttpDirector implements Callable<Void> {
     private CompletionService completionService;
 
     public HttpDirector(Task task) {
-        httpTask = new HttpTask();
-        httpTask.setTask(task);
+        this.task = task;
         completionService = new ExecutorCompletionService(workerExecutor);
     }
 
@@ -53,26 +53,26 @@ class HttpDirector implements Callable<Void> {
         long start = SystemClock.uptimeMillis();
 
         /* Get resource info. */
-        HttpResource resource = getResourceInfo(httpTask.getTask().getUrlStr());
+        HttpResource resource = getResourceInfo(task.getUrlStr());
         if (resource == null) {
             throw new Exception("resourceInfo == null");
         }
-        httpTask.setHttpResource(resource);
+        httpResource = resource;
 
         /* Create dest file parent dirs. */
-        if (!FileUtil.createParentDirs(httpTask.getTask().getFilePath())) {
-            httpTask.getTask().getErrorListener().onError(new FileSystemException("cannot create parent dir"));
+        if (!FileUtil.createParentDirs(task.getFilePath())) {
+            task.getErrorListener().onError(new FileSystemException("cannot create parent dir"));
             return null;
         }
 
         /* Split tasks. */
-        httpTask.getTask().setRanges(splitTask(httpTask.getHttpResource()));
+        task.setRanges(splitTask(httpResource));
 
         /* Create workers. */
         createWorkers();
 
         /* Notify start download. */
-        httpTask.getTask().getListener().onStart();
+        task.getListener().onStart();
 
         /* Start up download workers. */
         for (int i = 0; i < workerList.size(); i++) {
@@ -83,15 +83,15 @@ class HttpDirector implements Callable<Void> {
         for (int i = 0; i < workerList.size(); i++) {
             Future<Pair<Long, Long>> f = completionService.take();
             Pair<Long, Long> range = f.get();
-            httpTask.getTask().getRanges().remove(range);
+            task.getRanges().remove(range);
         }
 
         /* Notify finish download. */
-        if (httpTask.getTask().getRanges().isEmpty()) {
-            httpTask.getTask().getListener().onFinish();
+        if (task.getRanges().isEmpty()) {
+            task.getListener().onFinish();
         }
 
-        Log.e(TAG, "Download finish, use " + (SystemClock.uptimeMillis() - start) + " ms, urlStr : " + httpTask.getTask().getUrlStr());
+        Log.e(TAG, "Download finish, use " + (SystemClock.uptimeMillis() - start) + " ms, urlStr : " + task.getUrlStr());
 
         return null;
     }
@@ -156,20 +156,20 @@ class HttpDirector implements Callable<Void> {
         workerList.clear();
         progressUpdateListenerList.clear();
 
-        for (int i = 0; i < httpTask.getTask().getRanges().size(); i++) {
+        for (int i = 0; i < task.getRanges().size(); i++) {
             ProgressUpdateListener listener = getProgressListener(i);
             progressUpdateListenerList.add(listener);
-            workerList.add(new HttpWorker(httpTask, httpTask.getTask().getRanges().get(i), listener));
+            workerList.add(new HttpWorker(task, task.getRanges().get(i), listener));
         }
 
-        Log.e(TAG, "createWorkers(), urlStr : " + httpTask.getTask().getUrlStr() + " , content length : " + httpTask.getHttpResource().getContentLength() + " , worker count : " + workerList.size());
+        Log.e(TAG, "createWorkers(), urlStr : " + task.getUrlStr() + " , content length : " + httpResource.getContentLength() + " , worker count : " + workerList.size());
     }
 
     private ProgressUpdateListener getProgressListener(final int position) {
         return new ProgressUpdateListener() {
             @Override
             public void updateProgress(long count) {
-                httpTask.getTask().getListener().onProgress(httpTask.getHttpResource().getContentLength(), downloadCount.addAndGet(count));
+                task.getListener().onProgress(httpResource.getContentLength(), downloadCount.addAndGet(count));
             }
         };
     }
