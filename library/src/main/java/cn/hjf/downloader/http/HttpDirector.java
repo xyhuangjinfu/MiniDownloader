@@ -31,7 +31,7 @@ class HttpDirector implements Callable<Void> {
     private static final String TAG = "MD-HttpDirector";
 
     private static final int WORKER_THREAD_POOL_SIZE = Runtime.getRuntime().availableProcessors();
-    private static final int TASK_LENGTH = 1024 * 1024 * 8;
+    private static final int TASK_LENGTH = 1024 * 1024 * 2;
 
     private Context appContext;
 
@@ -39,6 +39,7 @@ class HttpDirector implements Callable<Void> {
     private HttpResource httpResource;
 
     private List<HttpWorker> workerList = new ArrayList<>();
+    private List<Future<Pair<Long, Long>>> futureList = new ArrayList<>();
     private List<ProgressUpdateListener> progressUpdateListenerList = new ArrayList<>();
 
     private AtomicLong downloadCount = new AtomicLong(0);
@@ -70,34 +71,52 @@ class HttpDirector implements Callable<Void> {
         }
 
         /* Split tasks. */
-        task.setRanges(splitTask(httpResource));
+        task.getRanges().addAll(splitTask(httpResource));
 
         /* Create workers. */
         createWorkers();
+
+        /* Set task status. */
+        task.setStatus(Task.Status.RUNNING);
 
         /* Notify start download. */
         task.getListener().onStart();
 
         /* Start up download workers. */
         for (int i = 0; i < workerList.size(); i++) {
-            completionService.submit(workerList.get(i));
+            futureList.add(completionService.submit(workerList.get(i)));
         }
 
         /* Block wait to download finish. */
         for (int i = 0; i < workerList.size(); i++) {
-            Future<Pair<Long, Long>> f = completionService.take();
-            Pair<Long, Long> range = f.get();
-            task.getRanges().remove(range);
+            try {
+                Future<Pair<Long, Long>> f = completionService.take();
+                Pair<Long, Long> range = f.get();
+                task.getRanges().remove(range);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
 
         /* Notify finish download. */
         if (task.getRanges().isEmpty()) {
             task.getListener().onFinish();
+            Log.e(TAG, "Download finish, use " + (SystemClock.uptimeMillis() - start) + " ms, urlStr : " + task.getUrlStr());
+        } else {
+            Log.e(TAG, "Download cancel, use " + (SystemClock.uptimeMillis() - start) + " ms, urlStr : " + task.getUrlStr() + " , total : " + httpResource.getContentLength() + " , download : " + downloadCount.get());
         }
 
-        Log.e(TAG, "Download finish, use " + (SystemClock.uptimeMillis() - start) + " ms, urlStr : " + task.getUrlStr());
-
         return null;
+    }
+
+    void cancel() {
+        for (int i = 0; i < futureList.size(); i++) {
+            futureList.get(i).cancel(false);
+        }
+    }
+
+    Task getTask() {
+        return task;
     }
 
     @Nullable

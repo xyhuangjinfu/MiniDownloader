@@ -19,6 +19,12 @@
         android:layout_height="wrap_content"
         />
 
+    <Button
+        android:id="@+id/pause1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="暂停"/>
+
     <ProgressBar
         android:id="@+id/pb2"
         style="?android:progressBarStyleHorizontal"
@@ -26,4 +32,5 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
         />
+
 </LinearLayout>

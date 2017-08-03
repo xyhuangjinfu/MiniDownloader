@@ -3,6 +3,7 @@ package cn.hjf.downloader;
 import android.support.v4.util.Pair;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -22,13 +23,19 @@ public class Task implements Serializable {
 
     private Status status;
 
-    private String urlStr;
-    private List<Pair<Long, Long>> ranges;
+    private final String urlStr;
+    private final List<Pair<Long, Long>> ranges;
 
-    private String filePath;
+    private final String filePath;
 
     private transient Listener listener;
     private transient ErrorListener errorListener;
+
+    public Task(String urlStr, String filePath) {
+        this.urlStr = urlStr;
+        this.filePath = filePath;
+        ranges = new ArrayList<>();
+    }
 
     public Status getStatus() {
         return status;
@@ -42,24 +49,12 @@ public class Task implements Serializable {
         return urlStr;
     }
 
-    public void setUrlStr(String urlStr) {
-        this.urlStr = urlStr;
-    }
-
     public List<Pair<Long, Long>> getRanges() {
         return ranges;
     }
 
-    public void setRanges(List<Pair<Long, Long>> ranges) {
-        this.ranges = ranges;
-    }
-
     public String getFilePath() {
         return filePath;
-    }
-
-    public void setFilePath(String filePath) {
-        this.filePath = filePath;
     }
 
     public Listener getListener() {

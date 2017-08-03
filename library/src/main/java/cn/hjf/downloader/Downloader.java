@@ -9,10 +9,12 @@ import android.support.annotation.NonNull;
 
 public interface Downloader {
 
-    void download(
+    Task download(
             @NonNull Context context,
             @NonNull String urlStr,
             @NonNull String filePath,
             @NonNull Listener listener,
             @NonNull ErrorListener errorListener);
+
+    void pause(@NonNull Task task);
 }

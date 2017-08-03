@@ -3,6 +3,8 @@ package cn.hjf.downloader.http;
 import android.content.Context;
 import android.support.annotation.NonNull;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -22,12 +24,14 @@ public class HttpDownloader implements Downloader {
     private Context appContext;
     private ExecutorService directorExecutor;
 
+    private List<HttpDirector> directorList = new ArrayList<>();
+
     public HttpDownloader() {
         directorExecutor = Executors.newFixedThreadPool(DIRECTOR_THREAD_POOL_SIZE);
     }
 
     @Override
-    public void download(
+    public Task download(
             @NonNull Context context,
             @NonNull String urlStr,
             @NonNull String filePath,
@@ -40,16 +44,45 @@ public class HttpDownloader implements Downloader {
                 || errorListener == null) {
             throw new IllegalArgumentException("Some parameters must not be null, please check again!");
         }
+
         appContext = context.getApplicationContext();
-        HttpDirector director = new HttpDirector(appContext, createNewTask(urlStr, filePath, listener, errorListener));
+
+        Task task = createNewTask(urlStr, filePath, listener, errorListener);
+
+        HttpDirector director = new HttpDirector(appContext, task);
+        directorList.add(director);
+
         directorExecutor.submit(director);
+
+        return task;
+    }
+
+    @Override
+    public void pause(@NonNull Task task) {
+        if (task == null) {
+            throw new IllegalArgumentException("task must not be null!");
+        }
+        /* Not in running, skip. */
+        if (task.getStatus() != Task.Status.RUNNING) {
+            return;
+        }
+
+        HttpDirector httpDirector = null;
+        for (int i = 0; i < directorList.size(); i++) {
+            if (directorList.get(i).getTask().equals(task)) {
+                directorList.get(i).cancel();
+                httpDirector = directorList.get(i);
+            }
+        }
+        if (httpDirector != null) {
+            directorList.remove(httpDirector);
+        }
+
     }
 
     private Task createNewTask(String urlStr, String filePath, Listener listener, ErrorListener errorListener) {
-        Task task = new Task();
+        Task task = new Task(urlStr, filePath);
         task.setStatus(Task.Status.NEW);
-        task.setUrlStr(urlStr);
-        task.setFilePath(filePath);
         task.setListener(listener);
         task.setErrorListener(errorListener);
         return task;
