@@ -1,5 +1,8 @@
 package cn.hjf.downloader.http;
 
+import android.content.Context;
+import android.support.annotation.NonNull;
+
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -16,6 +19,7 @@ public class HttpDownloader implements Downloader {
 
     private static final int DIRECTOR_THREAD_POOL_SIZE = 2;
 
+    private Context appContext;
     private ExecutorService directorExecutor;
 
     public HttpDownloader() {
@@ -23,14 +27,20 @@ public class HttpDownloader implements Downloader {
     }
 
     @Override
-    public void download(String urlStr, String filePath, Listener listener, ErrorListener errorListener) {
-        if (urlStr == null
+    public void download(
+            @NonNull Context context,
+            @NonNull String urlStr,
+            @NonNull String filePath,
+            @NonNull Listener listener,
+            @NonNull ErrorListener errorListener) {
+        if (context == null
+                || urlStr == null
                 || filePath == null
                 || listener == null
                 || errorListener == null) {
             throw new IllegalArgumentException("Some parameters must not be null, please check again!");
         }
-
+        appContext = context.getApplicationContext();
         HttpDirector director = new HttpDirector(createNewTask(urlStr, filePath, listener, errorListener));
         directorExecutor.submit(director);
     }

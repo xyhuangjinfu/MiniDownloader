@@ -15,4 +15,13 @@ public class FileUtil {
         }
         return true;
     }
+
+    private String urlToFileName(String urlStr) {
+        int firstHalfLength = urlStr.length() / 2;
+        String fileName = String.valueOf(urlStr.substring(0, firstHalfLength).hashCode());
+        fileName += String.valueOf(urlStr.substring(firstHalfLength).hashCode());
+        return fileName;
+    }
+
+//    private
 }

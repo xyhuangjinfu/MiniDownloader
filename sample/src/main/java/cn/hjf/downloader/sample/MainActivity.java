@@ -80,41 +80,41 @@ public class MainActivity extends AppCompatActivity {
             });
 
 
-            httpDownloader.download(url_2, path_2, new Listener() {
-                @Override
-                public void onStart() {
-                    Log.e("O_O", "onStart");
-                }
-
-                @Override
-                public void onProgress(final long total, final long progress) {
-//                    Log.e("O_O", "onProgress, total : " + total + "  -  progress : " + progress);
-
-                    handler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            pb2.setMax(100);
-                            pb2.setProgress((int) (progress * 100 / total));
-                        }
-                    });
-                }
-
-                @Override
-                public void onFinish() {
-                    Log.e("O_O", "onFinish");
-                }
-
-            }, new ErrorListener() {
-                @Override
-                public void onInvalidUrl(String urlStr) {
-                    Log.e("O_O", "onInvalidUrl : " + urlStr);
-                }
-
-                @Override
-                public void onError(Exception error) {
-                    Log.e("O_O", "onError : " + error.getMessage());
-                }
-            });
+//            httpDownloader.download(url_2, path_2, new Listener() {
+//                @Override
+//                public void onStart() {
+//                    Log.e("O_O", "onStart");
+//                }
+//
+//                @Override
+//                public void onProgress(final long total, final long progress) {
+////                    Log.e("O_O", "onProgress, total : " + total + "  -  progress : " + progress);
+//
+//                    handler.post(new Runnable() {
+//                        @Override
+//                        public void run() {
+//                            pb2.setMax(100);
+//                            pb2.setProgress((int) (progress * 100 / total));
+//                        }
+//                    });
+//                }
+//
+//                @Override
+//                public void onFinish() {
+//                    Log.e("O_O", "onFinish");
+//                }
+//
+//            }, new ErrorListener() {
+//                @Override
+//                public void onInvalidUrl(String urlStr) {
+//                    Log.e("O_O", "onInvalidUrl : " + urlStr);
+//                }
+//
+//                @Override
+//                public void onError(Exception error) {
+//                    Log.e("O_O", "onError : " + error.getMessage());
+//                }
+//            });
         } catch (Exception e) {
             e.printStackTrace();
         }

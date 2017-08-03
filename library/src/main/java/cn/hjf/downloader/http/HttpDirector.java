@@ -53,7 +53,7 @@ class HttpDirector implements Callable<Void> {
         long start = SystemClock.uptimeMillis();
 
         /* Get resource info. */
-        HttpResource resource = getResourceInfo(task.getUrlStr());
+        HttpResource resource = getResourceInfo();
         if (resource == null) {
             throw new Exception("resourceInfo == null");
         }
@@ -97,8 +97,8 @@ class HttpDirector implements Callable<Void> {
     }
 
     @Nullable
-    private HttpResource getResourceInfo(String urlStr) throws Exception {
-        URL url = new URL(urlStr);
+    private HttpResource getResourceInfo() throws Exception {
+        URL url = new URL(task.getUrlStr());
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestMethod("HEAD");
 
