@@ -41,7 +41,7 @@ public class HttpDownloader implements Downloader {
             throw new IllegalArgumentException("Some parameters must not be null, please check again!");
         }
         appContext = context.getApplicationContext();
-        HttpDirector director = new HttpDirector(createNewTask(urlStr, filePath, listener, errorListener));
+        HttpDirector director = new HttpDirector(appContext, createNewTask(urlStr, filePath, listener, errorListener));
         directorExecutor.submit(director);
     }
 

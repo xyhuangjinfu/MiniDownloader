@@ -1,5 +1,6 @@
 package cn.hjf.downloader.http;
 
+import android.content.Context;
 import android.os.SystemClock;
 import android.support.annotation.Nullable;
 import android.support.v4.util.Pair;
@@ -32,6 +33,8 @@ class HttpDirector implements Callable<Void> {
     private static final int WORKER_THREAD_POOL_SIZE = Runtime.getRuntime().availableProcessors();
     private static final int TASK_LENGTH = 1024 * 1024 * 8;
 
+    private Context appContext;
+
     private Task task;
     private HttpResource httpResource;
 
@@ -43,7 +46,8 @@ class HttpDirector implements Callable<Void> {
     private static ExecutorService workerExecutor = Executors.newFixedThreadPool(WORKER_THREAD_POOL_SIZE);
     private CompletionService completionService;
 
-    public HttpDirector(Task task) {
+    public HttpDirector(Context appContext, Task task) {
+        this.appContext = appContext;
         this.task = task;
         completionService = new ExecutorCompletionService(workerExecutor);
     }
