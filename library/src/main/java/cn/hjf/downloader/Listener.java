@@ -4,13 +4,11 @@ package cn.hjf.downloader;
  * Created by huangjinfu on 2017/8/2.
  */
 
-public interface DownloadListener {
+public interface Listener {
 
     void onStart();
 
-    void onProgress(double progress);
+    void onProgress(long total, long progress);
 
     void onFinish();
-
-    void onError(String error);
 }

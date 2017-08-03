@@ -1,4 +1,4 @@
-package cn.hjf.downloader;
+package cn.hjf.downloader.util;
 
 import java.io.File;
 

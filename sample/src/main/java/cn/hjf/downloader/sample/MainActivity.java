@@ -7,8 +7,8 @@ import android.util.Log;
 
 import java.io.File;
 
-import cn.hjf.downloader.DownloadListener;
-import cn.hjf.downloader.HttpDownloader;
+import cn.hjf.downloader.Listener;
+import cn.hjf.downloader.http.HttpDownloader;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -30,7 +30,7 @@ public class MainActivity extends AppCompatActivity {
 
         try {
 
-            httpDownloader.download(url_1, path_1, new DownloadListener() {
+            httpDownloader.download(url_1, path_1, new Listener() {
                 @Override
                 public void onStart() {
                     Log.e("O_O", "onStart");
