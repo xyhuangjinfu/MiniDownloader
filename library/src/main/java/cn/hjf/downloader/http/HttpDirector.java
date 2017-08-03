@@ -30,7 +30,7 @@ class HttpDirector implements Callable<Void> {
     private static final String TAG = "MD-HttpDirector";
 
     private static final int WORKER_THREAD_POOL_SIZE = Runtime.getRuntime().availableProcessors();
-    private static final int MAX_TASK_LENGTH = 1024 * 1024 * 2;
+    private static final int MAX_TASK_LENGTH = 1024 * 1024 * 8;
 
     private Task task;
     private HttpResource httpResource;
