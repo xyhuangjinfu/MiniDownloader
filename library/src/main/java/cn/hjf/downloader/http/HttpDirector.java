@@ -30,7 +30,7 @@ class HttpDirector implements Callable<Void> {
     private static final String TAG = "MD-HttpDirector";
 
     private static final int WORKER_THREAD_POOL_SIZE = Runtime.getRuntime().availableProcessors();
-    private static final int MAX_TASK_LENGTH = 1024 * 1024 * 8;
+    private static final int TASK_LENGTH = 1024 * 1024 * 8;
 
     private Task task;
     private HttpResource httpResource;
@@ -131,21 +131,14 @@ class HttpDirector implements Callable<Void> {
     }
 
     private List<Pair<Long, Long>> splitByRanges(HttpResource resourceInfo) {
-        long taskLength;
-        if (resourceInfo.getContentLength() > WORKER_THREAD_POOL_SIZE * MAX_TASK_LENGTH) {
-            taskLength = MAX_TASK_LENGTH;
-        } else {
-            taskLength = resourceInfo.getContentLength() / WORKER_THREAD_POOL_SIZE;
-        }
-
         List<Pair<Long, Long>> ranges = new ArrayList<>();
-        for (long i = 0; i < resourceInfo.getContentLength(); i = i + taskLength) {
+        for (long i = 0; i < resourceInfo.getContentLength(); i = i + TASK_LENGTH) {
             long start = i;
-            long end = (resourceInfo.getContentLength() - 1 - start < taskLength)
+            long end = (resourceInfo.getContentLength() - 1 - start < TASK_LENGTH)
                     ?
                     resourceInfo.getContentLength() - 1
                     :
-                    start + taskLength - 1;
+                    start + TASK_LENGTH - 1;
             ranges.add(Pair.create(start, end));
         }
 
