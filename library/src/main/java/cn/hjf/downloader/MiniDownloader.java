@@ -17,26 +17,42 @@ public class MiniDownloader {
     /* Application context. */
     private Context appContext;
 
-    /* Task manager to manage task status. */
-    private TaskManager taskManager;
-
     /* Task queue to hold tasks.*/
-    private BlockingQueue<Task> taskQueue;
+    private final BlockingQueue<Task> taskQueue;
 
     /* Dispatch task to download. */
     private TaskDispatcher taskDispatcher;
 
     /* Executor to run dispatch task */
-    private ExecutorService taskDispatchExecutor;
+    private final ExecutorService taskDispatchExecutor;
+
+    /* Executor to run direct task. */
+    private final ExecutorService directorExecutor;
+
+    /* Executor to run download task. */
+    private final ExecutorService workerExecutor;
+
+    private static class InstanceHolder {
+        static MiniDownloader instance = new MiniDownloader();
+    }
+
+    public static MiniDownloader getInstance() {
+        return InstanceHolder.instance;
+    }
+
+    private MiniDownloader() {
+        taskQueue = new PriorityBlockingQueue<>();
+        taskDispatchExecutor = Executors.newFixedThreadPool(1);
+        directorExecutor = Executors.newFixedThreadPool(2);
+        workerExecutor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+    }
 
     public void init(@NonNull Context context) {
         appContext = context.getApplicationContext();
 
-        taskManager.init(appContext);
+        TaskManager.getInstance().init(appContext);
 
-        taskQueue = new PriorityBlockingQueue<>();
-        taskDispatcher = new TaskDispatcher(taskQueue);
-        taskDispatchExecutor = Executors.newFixedThreadPool(1);
+        taskDispatcher = new TaskDispatcher(taskQueue, directorExecutor, workerExecutor);
         taskDispatchExecutor.submit(taskDispatcher);
     }
 

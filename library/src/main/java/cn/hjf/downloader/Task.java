@@ -27,6 +27,7 @@ public class Task implements Serializable {
     private transient ErrorListener errorListener;
 
     private Progress progress;
+    private Resource resource;
 
     public Task(
             @NonNull String urlStr,
@@ -43,6 +44,10 @@ public class Task implements Serializable {
         return urlStr;
     }
 
+    public String getFilePath() {
+        return filePath;
+    }
+
     public ErrorListener getErrorListener() {
         return errorListener;
     }
@@ -51,8 +56,20 @@ public class Task implements Serializable {
         this.status = status;
     }
 
+    public Progress getProgress() {
+        return progress;
+    }
+
     Status getStatus() {
         return status;
+    }
+
+    Resource getResource() {
+        return resource;
+    }
+
+    void setResource(Resource resource) {
+        this.resource = resource;
     }
 
     @Override

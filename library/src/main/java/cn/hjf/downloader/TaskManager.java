@@ -18,6 +18,17 @@ class TaskManager {
 
     private Set<Task> taskSet;
 
+    private static class InstanceHolder {
+        static TaskManager instance = new TaskManager();
+    }
+
+    public static TaskManager getInstance() {
+        return InstanceHolder.instance;
+    }
+
+    private TaskManager() {
+    }
+
     public void init(Context appContext) {
         this.appContext = appContext;
 

@@ -19,6 +19,14 @@ import java.util.List;
 
 class FileUtil {
 
+    /**
+     * ************************************************************************************************************
+     * ************************************************************************************************************
+     */
+    /**
+     * @param context
+     * @return
+     */
     @NonNull
     public static List<Task> readTasksFromDisk(Context context) {
         List<Task> taskList = new ArrayList<>();
@@ -59,6 +67,27 @@ class FileUtil {
 
     public static boolean deleteTask(Context context, @NonNull Task task) {
         File file = new File(getRootDir(context), urlToFileName(task.getUrlStr()));
+        if (file.exists()) {
+            return file.delete();
+        }
+        return true;
+    }
+
+    /**
+     * ************************************************************************************************************
+     * ************************************************************************************************************
+     */
+
+    public static boolean createParentDirs(String path) {
+        File file = new File(path);
+        if (!file.getParentFile().exists()) {
+            return file.getParentFile().mkdirs();
+        }
+        return true;
+    }
+
+    public static boolean deleteFile(String path) {
+        File file = new File(path);
         if (file.exists()) {
             return file.delete();
         }
