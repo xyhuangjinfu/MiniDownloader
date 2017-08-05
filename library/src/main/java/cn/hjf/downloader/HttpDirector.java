@@ -6,15 +6,16 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Created by huangjinfu on 2017/8/5.
  */
 
-class HttpDirector implements Callable<Void> {
+class HttpDirector implements NewTaskCallable<Void> {
 
     private static final int TASK_LENGTH = 1024 * 1024 * 10;
 
@@ -23,6 +24,7 @@ class HttpDirector implements Callable<Void> {
     private final Task task;
 
     private List<HttpWorker> workerList;
+    private List<Future> futureList;
     private List<WorkListener> workListenerList;
     private List<ProgressListener> progressListenerList;
     private List<Range> downloadedRangeList;
@@ -35,6 +37,7 @@ class HttpDirector implements Callable<Void> {
         this.workerExecutor = workerExecutor;
 
         workerList = new ArrayList<>();
+        futureList = new ArrayList<>();
         workListenerList = new ArrayList<>();
         progressListenerList = new ArrayList<>();
         downloadedRangeList = new ArrayList<>();
@@ -49,8 +52,9 @@ class HttpDirector implements Callable<Void> {
     }
 
     public void quit() {
-        for (int i = 0; i < workerList.size(); i++) {
-            workerList.get(i).quit();
+        for (int i = 0; i < futureList.size(); i++) {
+            Future f = futureList.get(i);
+            f.cancel(false);
         }
     }
 
@@ -87,7 +91,7 @@ class HttpDirector implements Callable<Void> {
         task.getListener().onStart(task);
 
         /* start download. */
-        workerExecutor.invokeAll(workerList);
+        futureList.addAll(workerExecutor.invokeAll(workerList));
     }
 
     @Nullable
@@ -199,6 +203,20 @@ class HttpDirector implements Callable<Void> {
             public void onUpdate(long total, long download) {
                 long totalSize = ((HttpResource) task.getResource()).getContentLength();
                 task.getListener().onUpdateProgress(task, totalSize, downloadCount.addAndGet(download));
+            }
+        };
+    }
+
+    @Override
+    public FutureTask<Void> newTask() {
+        return new FutureTask<Void>(this) {
+            @Override
+            public boolean cancel(boolean mayInterruptIfRunning) {
+                for (int i = 0; i < futureList.size(); i++) {
+                    Future f = futureList.get(i);
+                    f.cancel(false);
+                }
+                return super.cancel(mayInterruptIfRunning);
             }
         };
     }

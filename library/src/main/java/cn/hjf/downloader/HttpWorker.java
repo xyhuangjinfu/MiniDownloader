@@ -6,16 +6,17 @@ import java.io.BufferedInputStream;
 import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.concurrent.Callable;
+import java.util.concurrent.FutureTask;
 
 /**
  * Created by huangjinfu on 2017/8/5.
  */
 
-public class HttpWorker implements Callable<Range> {
+public class HttpWorker implements NewTaskCallable<Void> {
 
     private Task task;
     private Range range;
+    private Range downloaded = Range.INVALID_RANGE;
 
     private WorkListener workListener;
     private ProgressListener progressListener;
@@ -36,7 +37,7 @@ public class HttpWorker implements Callable<Range> {
     }
 
     @Override
-    public Range call() throws Exception {
+    public Void call() throws Exception {
         /* Downgrade download thread priority. */
         Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
 
@@ -57,6 +58,31 @@ public class HttpWorker implements Callable<Range> {
         }
         return null;
     }
+
+    @Override
+    public FutureTask<Void> newTask() {
+        return new FutureTask(this) {
+            @Override
+            public boolean cancel(boolean mayInterruptIfRunning) {
+                quit = true;
+                return super.cancel(mayInterruptIfRunning);
+            }
+        };
+    }
+
+    /**
+     * ***************************************************************************************************************
+     * ***************************************************************************************************************
+     */
+
+    Range downloaded() {
+        return downloaded;
+    }
+
+    /**
+     * ***************************************************************************************************************
+     * ***************************************************************************************************************
+     */
 
     private void addHeader(HttpURLConnection connection) {
         HttpResource r = (HttpResource) task.getResource();
@@ -96,7 +122,7 @@ public class HttpWorker implements Callable<Range> {
         } finally {
             /* Update download range. */
             Range download = downloadCount == 0 ? Range.INVALID_RANGE : new Range(range.getStart(), range.getStart() + downloadCount - 1);
-            workListener.onDownload(task, range, download);
+            downloaded = download;
             /* Close io. */
             try {
                 if (bis != null) {
@@ -111,7 +137,4 @@ public class HttpWorker implements Callable<Range> {
         }
     }
 
-    public void quit() {
-        quit = true;
-    }
 }

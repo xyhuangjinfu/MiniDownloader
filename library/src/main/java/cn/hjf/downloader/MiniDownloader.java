@@ -6,6 +6,8 @@ import android.support.annotation.NonNull;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by huangjinfu on 2017/8/5.
@@ -44,7 +46,11 @@ public class MiniDownloader {
 //        taskQueue = new PriorityBlockingQueue<>();
 //        taskDispatchExecutor = Executors.newFixedThreadPool(1);
         directorExecutor = Executors.newFixedThreadPool(2);
-        workerExecutor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        workerExecutor = new CustomFutureTaskThreadPoolExecutor(
+                Runtime.getRuntime().availableProcessors(),
+                Runtime.getRuntime().availableProcessors(),
+                0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<Runnable>());
         httpDownloader = new HttpDownloader(directorExecutor, workerExecutor);
     }
 
