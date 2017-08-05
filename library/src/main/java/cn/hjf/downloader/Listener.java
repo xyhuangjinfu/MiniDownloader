@@ -5,4 +5,11 @@ package cn.hjf.downloader;
  */
 
 public interface Listener {
+    void onStart(Task task);
+
+    void onUpdateProgress(Task task, long total, long downloaded);
+
+    void onPause(Task task);
+
+    void onFinish(Task task);
 }

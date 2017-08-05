@@ -52,6 +52,10 @@ public class Task implements Serializable {
         return errorListener;
     }
 
+    public Listener getListener() {
+        return listener;
+    }
+
     void setStatus(Status status) {
         this.status = status;
     }

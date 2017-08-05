@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Created by huangjinfu on 2017/8/5.
@@ -17,57 +18,73 @@ class HttpDirector implements Callable<Void> {
 
     private static final int TASK_LENGTH = 1024 * 1024 * 10;
 
-    private ExecutorService directorExecutor;
     private ExecutorService workerExecutor;
 
-    private volatile boolean quit;
-
     private Task task;
-    private HttpResource resource;
-    private Progress progress;
 
     private List<HttpWorker> workerList;
+    private List<WorkListener> workListenerList;
+    private List<ProgressListener> progressListenerList;
+    private List<Range> downloadedRangeList;
+    private AtomicLong downloadCount = new AtomicLong(0);
 
     public HttpDirector(
             Task task,
             ExecutorService workerExecutor) {
         this.task = task;
-        resource = (HttpResource) task.getResource();
-        progress = task.getProgress();
+        this.workerExecutor = workerExecutor;
+
         workerList = new ArrayList<>();
+        workListenerList = new ArrayList<>();
+        progressListenerList = new ArrayList<>();
+        downloadedRangeList = new ArrayList<>();
     }
 
     @Override
     public Void call() throws Exception {
-        /* Get resource info. */
-        if (resource == null) {
-            resource = getResource();
-            if (resource == null) {
-                task.getErrorListener().onServerError("unknown server resource");
-            }
-        }
-        /* Create dest file parent dirs. */
-        if (!FileUtil.createParentDirs(task.getFilePath())) {
-            task.getErrorListener().onLocalError("cannot create parent dir");
-            return null;
-        }
-        /* Split tasks. */
-        List<Range> rangeList = splitTask(resource);
 
-        /* Create workers. */
-        createWorkers(rangeList);
+        direct();
 
         return null;
     }
 
     public void quit() {
-        quit = true;
+        for (int i = 0; i < workerList.size(); i++) {
+            workerList.get(i).quit();
+        }
     }
 
     /**
      * **************************************************************************************************
      * **************************************************************************************************
      */
+
+    private void direct() throws Exception {
+          /* Get resource info. */
+        if (task.getResource() == null) {
+            task.setResource(getResource());
+            if (task.getResource() == null) {
+                task.getErrorListener().onServerError("unknown server resource");
+                return;
+            }
+        }
+        /* Create dest file parent dirs. */
+        if (!FileUtil.createParentDirs(task.getFilePath())) {
+            task.getErrorListener().onLocalError("cannot create parent dir");
+            return;
+        }
+        /* Split tasks. */
+        List<Range> rangeList = splitTask();
+
+        /* Create workers. */
+        createWorkers(rangeList);
+
+        /* Notify start download. */
+        task.getListener().onStart(task);
+
+        /* start download. */
+        workerExecutor.invokeAll(workerList);
+    }
 
     @Nullable
     private HttpResource getResource() throws Exception {
@@ -98,12 +115,13 @@ class HttpDirector implements Callable<Void> {
         return new HttpResource(contentLength, acceptRanges, eTag, lastModified);
     }
 
-    private List<Range> splitTask(HttpResource resourceInfo) {
+    private List<Range> splitTask() {
+        HttpResource r = (HttpResource) task.getResource();
         /* Http 1.1 only support "bytes" range unit */
-        if ("bytes".equals(resourceInfo.getAcceptRanges())) {
-            return splitByRanges(resourceInfo);
+        if ("bytes".equals(r.getAcceptRanges())) {
+            return splitByRanges(r);
         } else {
-            return splitWhole(resourceInfo);
+            return splitWhole(r);
         }
     }
 
@@ -130,9 +148,54 @@ class HttpDirector implements Callable<Void> {
 
     private void createWorkers(List<Range> rangeList) {
         workerList.clear();
+        workListenerList.clear();
+        progressListenerList.clear();
 
         for (int i = 0; i < rangeList.size(); i++) {
-            workerList.add(new HttpWorker(task, rangeList.get(i)));
+            WorkListener workListener = createWorkerListener();
+            workListenerList.add(workListener);
+
+            ProgressListener progressListener = createProgressListener();
+
+            workerList.add(new HttpWorker(task,
+                    rangeList.get(i),
+                    workListener,
+                    progressListener));
         }
+    }
+
+    private WorkListener createWorkerListener() {
+        return new WorkListener() {
+            @Override
+            public void onResourceModified(Task task) {
+                //TODO quit all workers, delete downloaded data, re-create workers.
+                task.setResource(null);
+
+                try {
+                    direct();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
+            @Override
+            public void onDownload(Task task, Range expect, Range actual) {
+                downloadedRangeList.add(actual);
+
+                if (downloadedRangeList.size() == workerList.size()) {
+                    //TODO calculate downloaded
+                }
+            }
+        };
+    }
+
+    private ProgressListener createProgressListener() {
+        return new ProgressListener() {
+            @Override
+            public void onUpdate(long total, long download) {
+                long totalSize = ((HttpResource) task.getResource()).getContentLength();
+                task.getListener().onUpdateProgress(task, totalSize, downloadCount.addAndGet(download));
+            }
+        };
     }
 }
