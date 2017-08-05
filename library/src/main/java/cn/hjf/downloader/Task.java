@@ -1,13 +1,11 @@
 package cn.hjf.downloader;
 
-import android.support.v4.util.Pair;
+import android.support.annotation.NonNull;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
- * Created by huangjinfu on 2017/8/3.
+ * Created by huangjinfu on 2017/8/5.
  */
 
 public class Task implements Serializable {
@@ -17,59 +15,65 @@ public class Task implements Serializable {
     public enum Status {
         NEW,
         RUNNING,
-        PAUSE,
+        PAUSED,
         FINISH
     }
 
+    private String urlStr;
+    private String filePath;
     private Status status;
-
-    private final String urlStr;
-    private final List<Pair<Long, Long>> ranges;
-
-    private final String filePath;
 
     private transient Listener listener;
     private transient ErrorListener errorListener;
 
-    public Task(String urlStr, String filePath) {
+    private Progress progress;
+
+    public Task(
+            @NonNull String urlStr,
+            @NonNull String filePath,
+            @NonNull Listener listener,
+            @NonNull ErrorListener errorListener) {
         this.urlStr = urlStr;
         this.filePath = filePath;
-        ranges = new ArrayList<>();
-    }
-
-    public Status getStatus() {
-        return status;
-    }
-
-    public void setStatus(Status status) {
-        this.status = status;
+        this.listener = listener;
+        this.errorListener = errorListener;
     }
 
     public String getUrlStr() {
         return urlStr;
     }
 
-    public List<Pair<Long, Long>> getRanges() {
-        return ranges;
-    }
-
-    public String getFilePath() {
-        return filePath;
-    }
-
-    public Listener getListener() {
-        return listener;
-    }
-
-    public void setListener(Listener listener) {
-        this.listener = listener;
-    }
-
     public ErrorListener getErrorListener() {
         return errorListener;
     }
 
-    public void setErrorListener(ErrorListener errorListener) {
-        this.errorListener = errorListener;
+    void setStatus(Status status) {
+        this.status = status;
+    }
+
+    Status getStatus() {
+        return status;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) {
+            return true;
+        }
+        if (!(obj instanceof Task)) {
+            return false;
+        }
+        Task t = (Task) obj;
+
+        return this.urlStr.equals(t.urlStr)
+                && this.filePath.equals(t.filePath);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = 17;
+        result = 31 * result + urlStr.hashCode();
+        result = 31 * result + filePath.hashCode();
+        return result;
     }
 }

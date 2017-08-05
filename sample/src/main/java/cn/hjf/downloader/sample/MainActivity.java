@@ -14,7 +14,7 @@ import java.io.File;
 import cn.hjf.downloader.ErrorListener;
 import cn.hjf.downloader.Listener;
 import cn.hjf.downloader.Task;
-import cn.hjf.downloader.http.HttpDownloader;
+import cn.hjf.downloader.HttpDownloader;
 
 public class MainActivity extends AppCompatActivity {
 
