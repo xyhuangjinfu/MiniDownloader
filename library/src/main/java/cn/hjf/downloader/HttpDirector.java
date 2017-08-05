@@ -20,7 +20,7 @@ class HttpDirector implements Callable<Void> {
 
     private ExecutorService workerExecutor;
 
-    private Task task;
+    private final Task task;
 
     private List<HttpWorker> workerList;
     private List<WorkListener> workListenerList;
@@ -52,6 +52,10 @@ class HttpDirector implements Callable<Void> {
         for (int i = 0; i < workerList.size(); i++) {
             workerList.get(i).quit();
         }
+    }
+
+    public Task getTask() {
+        return task;
     }
 
     /**

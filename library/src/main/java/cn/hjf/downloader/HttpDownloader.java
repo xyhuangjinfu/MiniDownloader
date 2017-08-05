@@ -5,23 +5,53 @@ import android.support.annotation.NonNull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 /**
  * Created by huangjinfu on 2017/8/5.
  */
 
-public class HttpDownloader {
+class HttpDownloader {
 
-    private List<HttpDirector> directorList;
     private ExecutorService directorExecutor;
     private ExecutorService workerExecutor;
 
-    public HttpDownloader() {
-        this.directorList = new ArrayList<>();
+    private List<HttpDirector> directorList;
+    private List<Future> futureList;
+
+    public HttpDownloader(ExecutorService directorExecutor, ExecutorService workerExecutor) {
+        this.directorExecutor = directorExecutor;
+        this.workerExecutor = workerExecutor;
+
+        directorList = new ArrayList<>();
+        futureList = new ArrayList<>();
     }
 
     public void download(@NonNull Task task) {
         HttpDirector httpDirector = new HttpDirector(task, workerExecutor);
-        directorExecutor.submit(httpDirector);
+        futureList.add(directorExecutor.submit(httpDirector));
+    }
+
+    public void pause(@NonNull Task task) {
+        HttpDirector director = null;
+        for (int i = 0; i < directorList.size(); i++) {
+            director = directorList.get(i);
+            if (director.getTask().equals(task)) {
+                director.quit();
+
+                Future future = futureList.get(i);
+                future.cancel(false);
+                futureList.remove(i);
+
+                break;
+            }
+        }
+        directorList.remove(director);
+
+    }
+
+    public void delete(@NonNull Task task) {
+        pause(task);
+        FileUtil.deleteFile(task.getFilePath());
     }
 }

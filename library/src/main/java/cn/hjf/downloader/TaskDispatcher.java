@@ -29,7 +29,7 @@ class TaskDispatcher implements Callable<Void> {
         this.taskQueue = taskQueue;
         this.directorExecutor =directorExecutor;
         this.workerExecutor = workerExecutor;
-        httpDownloader = new HttpDownloader();
+//        httpDownloader = new HttpDownloader();
     }
 
     @Override
