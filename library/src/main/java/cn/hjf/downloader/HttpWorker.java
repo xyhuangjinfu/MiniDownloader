@@ -22,6 +22,7 @@ public class HttpWorker implements Callable<Range> {
 
     private volatile boolean quit;
     private byte[] buffer = new byte[1024 * 1024];
+    private int downloadCount;
 
     public HttpWorker(
             Task task,
@@ -30,6 +31,8 @@ public class HttpWorker implements Callable<Range> {
             ProgressListener progressListener) {
         this.task = task;
         this.range = range;
+        this.workListener = workListener;
+        this.progressListener = progressListener;
     }
 
     @Override
@@ -76,7 +79,7 @@ public class HttpWorker implements Callable<Range> {
             randomAccessFile.seek(range.getStart());
 
             final long total = range.getEnd() - range.getStart() + 1;
-            int downloadCount = 0;
+
             int readCount;
             while ((readCount = bis.read(buffer)) != -1) {
                 randomAccessFile.write(buffer, 0, readCount);
@@ -85,15 +88,16 @@ public class HttpWorker implements Callable<Range> {
 
                 /* Time to quit. */
                 if (quit) {
-                    workListener.onDownload(task, range, new Range(range.getStart(), range.getStart() + downloadCount - 1));
                     return;
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
-            /* Download nothing. */
-            workListener.onDownload(task, range, Range.INVALID_RANGE);
         } finally {
+            /* Update download range. */
+            Range download = downloadCount == 0 ? Range.INVALID_RANGE : new Range(range.getStart(), range.getStart() + downloadCount - 1);
+            workListener.onDownload(task, range, download);
+            /* Close io. */
             try {
                 if (bis != null) {
                     bis.close();
