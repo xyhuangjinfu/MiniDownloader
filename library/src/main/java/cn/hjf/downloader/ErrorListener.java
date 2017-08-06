@@ -7,6 +7,8 @@ package cn.hjf.downloader;
 public interface ErrorListener {
     void onInvalidUrl(String urlStr);
 
+    void onResourceModified(Task task);
+
     void onLocalError(String msg);
 
     void onServerError(String msg);

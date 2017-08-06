@@ -14,4 +14,32 @@ public class Progress implements Serializable {
     private long total;
     private long download;
     private List<Range> downloadedRanges;
+
+    public long getTotal() {
+        return total;
+    }
+
+    public void setTotal(long total) {
+        this.total = total;
+    }
+
+    public long getDownload() {
+        return download;
+    }
+
+    public void setDownload(long download) {
+        this.download = download;
+    }
+
+    public List<Range> getDownloadedRanges() {
+        return downloadedRanges;
+    }
+
+    public void setDownloadedRanges(List<Range> downloadedRanges) {
+        this.downloadedRanges = downloadedRanges;
+    }
+
+    public boolean finish() {
+        return total == download;
+    }
 }

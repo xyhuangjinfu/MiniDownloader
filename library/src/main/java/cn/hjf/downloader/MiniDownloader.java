@@ -4,6 +4,7 @@ import android.content.Context;
 import android.support.annotation.NonNull;
 
 import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -32,6 +33,8 @@ public class MiniDownloader {
     /* Executor to run download task. */
     private final ExecutorService workerExecutor;
 
+    private final ExecutorService commandExecutor;
+
     private final HttpDownloader httpDownloader;
 
     private static class InstanceHolder {
@@ -46,6 +49,7 @@ public class MiniDownloader {
 //        taskQueue = new PriorityBlockingQueue<>();
 //        taskDispatchExecutor = Executors.newFixedThreadPool(1);
         directorExecutor = Executors.newFixedThreadPool(2);
+        commandExecutor = Executors.newSingleThreadExecutor();
         workerExecutor = new CustomFutureTaskThreadPoolExecutor(
                 Runtime.getRuntime().availableProcessors(),
                 Runtime.getRuntime().availableProcessors(),
@@ -64,26 +68,33 @@ public class MiniDownloader {
     }
 
     public void quit() {
+        commandExecutor.shutdownNow();
         workerExecutor.shutdownNow();
         directorExecutor.shutdownNow();
     }
 
-    public void download(@NonNull Task task) {
-        if (isHttpTask(task)) {
-            httpDownloader.download(task);
-        }
+    public void start(@NonNull final Task task) {
+        commandExecutor.submit(new Callable<Void>() {
+            @Override
+            public Void call() throws Exception {
+                if (isHttpTask(task)) {
+                    httpDownloader.start(task);
+                }
+                return null;
+            }
+        });
     }
 
-    public void pause(@NonNull Task task) {
-        if (isHttpTask(task)) {
-            httpDownloader.pause(task);
-        }
-    }
-
-    public void delete(@NonNull Task task) {
-        if (isHttpTask(task)) {
-            httpDownloader.delete(task);
-        }
+    public void stop(@NonNull final Task task) {
+        commandExecutor.submit(new Callable<Void>() {
+            @Override
+            public Void call() throws Exception {
+                if (isHttpTask(task)) {
+                    httpDownloader.stop(task);
+                }
+                return null;
+            }
+        });
     }
 
     public List<Task> getPausedTask() {

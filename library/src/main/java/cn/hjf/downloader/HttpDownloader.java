@@ -27,12 +27,12 @@ class HttpDownloader {
         futureList = new ArrayList<>();
     }
 
-    public void download(@NonNull Task task) {
+    public void start(@NonNull Task task) {
         HttpDirector httpDirector = new HttpDirector(task, workerExecutor);
         futureList.add(directorExecutor.submit(httpDirector));
     }
 
-    public void pause(@NonNull Task task) {
+    public void stop(@NonNull Task task) {
         HttpDirector director = null;
         for (int i = 0; i < directorList.size(); i++) {
             director = directorList.get(i);
@@ -47,11 +47,5 @@ class HttpDownloader {
             }
         }
         directorList.remove(director);
-
-    }
-
-    public void delete(@NonNull Task task) {
-        pause(task);
-        FileUtil.deleteFile(task.getFilePath());
     }
 }

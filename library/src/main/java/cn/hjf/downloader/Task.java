@@ -76,6 +76,10 @@ public class Task implements Serializable {
         this.resource = resource;
     }
 
+    void setProgress(Progress progress) {
+        this.progress = progress;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (obj == this) {

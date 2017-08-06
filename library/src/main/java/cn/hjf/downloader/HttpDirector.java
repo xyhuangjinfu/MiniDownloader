@@ -5,6 +5,8 @@ import android.support.annotation.Nullable;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -27,8 +29,9 @@ class HttpDirector implements CustomFutureCallable<Void> {
     private List<Future> futureList;
     private List<WorkListener> workListenerList;
     private List<ProgressListener> progressListenerList;
-    private List<Range> downloadedRangeList;
     private AtomicLong downloadCount = new AtomicLong(0);
+
+    private volatile boolean resourceModifiedNotified;
 
     public HttpDirector(
             Task task,
@@ -40,7 +43,6 @@ class HttpDirector implements CustomFutureCallable<Void> {
         futureList = new ArrayList<>();
         workListenerList = new ArrayList<>();
         progressListenerList = new ArrayList<>();
-        downloadedRangeList = new ArrayList<>();
     }
 
     @Override
@@ -49,6 +51,20 @@ class HttpDirector implements CustomFutureCallable<Void> {
         direct();
 
         return null;
+    }
+
+    @Override
+    public FutureTask<Void> newTaskFor() {
+        return new FutureTask<Void>(this) {
+            @Override
+            public boolean cancel(boolean mayInterruptIfRunning) {
+                for (int i = 0; i < futureList.size(); i++) {
+                    Future f = futureList.get(i);
+                    f.cancel(false);
+                }
+                return super.cancel(mayInterruptIfRunning);
+            }
+        };
     }
 
     public void quit() {
@@ -90,8 +106,18 @@ class HttpDirector implements CustomFutureCallable<Void> {
         /* Notify start download. */
         task.getListener().onStart(task);
 
-        /* start download. */
+        /* start download, block util finish. */
         futureList.addAll(workerExecutor.invokeAll(workerList));
+
+        /* Calculate download size */
+        task.setProgress(createProgress());
+
+        /* Notify finish or paused. */
+        if (task.getProgress().finish()) {
+            task.getListener().onFinish(task);
+        } else {
+            task.getListener().onPause(task);
+        }
     }
 
     @Nullable
@@ -140,12 +166,38 @@ class HttpDirector implements CustomFutureCallable<Void> {
     }
 
     private List<Range> splitByRanges(HttpResource resourceInfo) {
+        if (task.getProgress() == null) {
+            return splitRemainRange(new Range(0, resourceInfo.getContentLength() - 1));
+        }
+
+        List<Range> downloaded = task.getProgress().getDownloadedRanges();
+        Collections.sort(downloaded, new Comparator<Range>() {
+            @Override
+            public int compare(Range o1, Range o2) {
+                if (o1.getStart() < o2.getStart()) {
+                    return -1;
+                } else if (o1.getStart() > o2.getStart()) {
+                    return 1;
+                } else {
+                    return 0;
+                }
+            }
+        });
+
+        List<Range> remain = new ArrayList<>();
+        for (int i = 0; i < downloaded.size(); i++) {
+
+        }
+    }
+
+    private List<Range> splitRemainRange(Range range) {
+        long length = range.getEnd() - range.getStart() + 1;
         List<Range> ranges = new ArrayList<>();
-        for (long i = 0; i < resourceInfo.getContentLength(); i = i + TASK_LENGTH) {
+        for (long i = 0; i < length; i = i + TASK_LENGTH) {
             long start = i;
-            long end = (resourceInfo.getContentLength() - 1 - start < TASK_LENGTH)
+            long end = (length - 1 - start < TASK_LENGTH)
                     ?
-                    resourceInfo.getContentLength() - 1
+                    length - 1
                     :
                     start + TASK_LENGTH - 1;
             ranges.add(new Range(start, end));
@@ -172,27 +224,58 @@ class HttpDirector implements CustomFutureCallable<Void> {
         }
     }
 
+    private Progress createProgress() {
+        Progress progress = new Progress();
+        progress.setTotal(((HttpResource) task.getResource()).getContentLength());
+        List<Range> downloaded = new ArrayList<>();
+        for (int i = 0; i < futureList.size(); i++) {
+            Future<Range> f = futureList.get(i);
+            try {
+                Range r = f.get();
+                if (r != Range.INVALID_RANGE) {
+                    downloaded.add(f.get());
+                }
+            } catch (Exception e) {
+            }
+        }
+
+        /* Merge ranges. */
+        List<Range> newRange = new ArrayList<>();
+        Collections.sort(downloaded, new Comparator<Range>() {
+            @Override
+            public int compare(Range o1, Range o2) {
+                if (o1.getStart() < o2.getStart()) {
+                    return -1;
+                } else if (o1.getStart() > o2.getStart()) {
+                    return 1;
+                } else {
+                    return 0;
+                }
+            }
+        });
+        for (int i = 0; i < downloaded.size() - 1; i++) {
+             Range first = downloaded.get(i);
+             Range second = downloaded.get(i + 1);
+            newRange.
+        }
+
+        long downloadSize = 0;
+        for (int i = 0; i < downloaded.size(); i++) {
+            Range r = downloaded.get(i);
+            downloadSize += (r.getEnd() - r.getStart() + 1);
+        }
+        progress.setDownload(downloadSize);
+        return progress;
+    }
+
     private WorkListener createWorkerListener() {
         return new WorkListener() {
             @Override
             public void onResourceModified(Task task) {
-                //TODO quit all workers, delete downloaded data, re-create workers.
-                task.setResource(null);
-
-                try {
-                    direct();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-
-            @Override
-            public void onDownload(Task task, Range expect, Range actual) {
-                downloadedRangeList.add(actual);
-
-                if (downloadedRangeList.size() == workerList.size()) {
-                    //TODO calculate downloaded
-                }
+//                for (int i = 0; i < futureList.size(); i++) {
+//                    Future f = futureList.get(i);
+//                    f.cancel(false);
+//                }
             }
         };
     }
@@ -200,24 +283,11 @@ class HttpDirector implements CustomFutureCallable<Void> {
     private ProgressListener createProgressListener() {
         return new ProgressListener() {
             @Override
-            public void onUpdate(long total, long download) {
+            public void onUpdate(long download) {
                 long totalSize = ((HttpResource) task.getResource()).getContentLength();
                 task.getListener().onUpdateProgress(task, totalSize, downloadCount.addAndGet(download));
             }
         };
     }
 
-    @Override
-    public FutureTask<Void> newTaskFor() {
-        return new FutureTask<Void>(this) {
-            @Override
-            public boolean cancel(boolean mayInterruptIfRunning) {
-                for (int i = 0; i < futureList.size(); i++) {
-                    Future f = futureList.get(i);
-                    f.cancel(false);
-                }
-                return super.cancel(mayInterruptIfRunning);
-            }
-        };
-    }
 }

@@ -6,6 +6,4 @@ package cn.hjf.downloader;
 
 interface WorkListener {
     void onResourceModified(Task task);
-
-    void onDownload(Task task, Range expect, Range actual);
 }
