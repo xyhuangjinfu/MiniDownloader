@@ -5,5 +5,5 @@ package cn.hjf.downloader;
  */
 
 interface ProgressListener {
-    void onUpdate(long total, long download);
+    void onUpdate(long download);
 }

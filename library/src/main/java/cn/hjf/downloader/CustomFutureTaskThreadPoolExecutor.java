@@ -9,10 +9,10 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Created by huangjinfu on 2017/8/5.
+ * Created by huangjinfu on 2017/8/6.
  */
+public class CustomFutureTaskThreadPoolExecutor extends ThreadPoolExecutor {
 
-class CustomFutureTaskThreadPoolExecutor extends ThreadPoolExecutor {
     public CustomFutureTaskThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit, BlockingQueue<Runnable> workQueue) {
         super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue);
     }
@@ -31,8 +31,8 @@ class CustomFutureTaskThreadPoolExecutor extends ThreadPoolExecutor {
 
     @Override
     protected <T> RunnableFuture<T> newTaskFor(Callable<T> callable) {
-        if (callable instanceof NewTaskCallable) {
-            return ((NewTaskCallable) callable).newTask();
+        if (callable instanceof CustomFutureCallable) {
+            return ((CustomFutureCallable) callable).newTaskFor();
         }
         return super.newTaskFor(callable);
     }

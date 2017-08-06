@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * Created by huangjinfu on 2017/8/5.
  */
 
-class HttpDirector implements NewTaskCallable<Void> {
+class HttpDirector implements CustomFutureCallable<Void> {
 
     private static final int TASK_LENGTH = 1024 * 1024 * 10;
 
@@ -208,7 +208,7 @@ class HttpDirector implements NewTaskCallable<Void> {
     }
 
     @Override
-    public FutureTask<Void> newTask() {
+    public FutureTask<Void> newTaskFor() {
         return new FutureTask<Void>(this) {
             @Override
             public boolean cancel(boolean mayInterruptIfRunning) {

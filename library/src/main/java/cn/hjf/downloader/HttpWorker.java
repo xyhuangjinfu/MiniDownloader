@@ -12,18 +12,17 @@ import java.util.concurrent.FutureTask;
  * Created by huangjinfu on 2017/8/5.
  */
 
-public class HttpWorker implements NewTaskCallable<Void> {
+public class HttpWorker implements CustomFutureCallable<Range> {
 
     private Task task;
     private Range range;
-    private Range downloaded = Range.INVALID_RANGE;
 
     private WorkListener workListener;
     private ProgressListener progressListener;
 
     private volatile boolean quit;
+    private volatile boolean called;
     private byte[] buffer = new byte[1024 * 1024];
-    private int downloadCount;
 
     public HttpWorker(
             Task task,
@@ -37,46 +36,47 @@ public class HttpWorker implements NewTaskCallable<Void> {
     }
 
     @Override
-    public Void call() throws Exception {
+    public Range call() throws Exception {
+        /* Mark called. */
+        called = true;
+
         /* Downgrade download thread priority. */
         Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
 
         /* Connect server. */
         URL url = new URL(task.getUrlStr());
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+
         /* Add header. */
         addHeader(connection);
+
         /* Check response. */
         /* Remote resource modified.*/
         if (connection.getResponseCode() == HttpURLConnection.HTTP_PRECON_FAILED) {
             workListener.onResourceModified(task);
-            return null;
+            /* Ignore this return value. */
+            return Range.INVALID_RANGE;
         }
+
         /* Response 206, download. */
         if (connection.getResponseCode() == HttpURLConnection.HTTP_PARTIAL) {
-            readAndWrite(connection);
+            return readAndWrite(connection);
         }
-        return null;
+        return Range.INVALID_RANGE;
     }
 
     @Override
-    public FutureTask<Void> newTask() {
+    public FutureTask<Range> newTaskFor() {
         return new FutureTask(this) {
             @Override
             public boolean cancel(boolean mayInterruptIfRunning) {
-                quit = true;
+                if (called) {
+                    quit = true;
+                    return true;
+                }
                 return super.cancel(mayInterruptIfRunning);
             }
         };
-    }
-
-    /**
-     * ***************************************************************************************************************
-     * ***************************************************************************************************************
-     */
-
-    Range downloaded() {
-        return downloaded;
     }
 
     /**
@@ -95,35 +95,30 @@ public class HttpWorker implements NewTaskCallable<Void> {
         connection.setRequestProperty("Range", "bytes=" + range.getStart() + "-" + range.getEnd());
     }
 
-    private void readAndWrite(HttpURLConnection connection) {
+    private Range readAndWrite(HttpURLConnection connection) {
         RandomAccessFile randomAccessFile = null;
         BufferedInputStream bis = null;
+        long downloadCount = 0;
         try {
             bis = new BufferedInputStream(connection.getInputStream());
 
             randomAccessFile = new RandomAccessFile(task.getFilePath(), "rw");
             randomAccessFile.seek(range.getStart());
 
-            final long total = range.getEnd() - range.getStart() + 1;
-
             int readCount;
             while ((readCount = bis.read(buffer)) != -1) {
                 randomAccessFile.write(buffer, 0, readCount);
                 downloadCount += readCount;
-                progressListener.onUpdate(total, downloadCount);
+                progressListener.onUpdate(readCount);
 
                 /* Time to quit. */
                 if (quit) {
-                    return;
+                    break;
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
-            /* Update download range. */
-            Range download = downloadCount == 0 ? Range.INVALID_RANGE : new Range(range.getStart(), range.getStart() + downloadCount - 1);
-            downloaded = download;
-            /* Close io. */
             try {
                 if (bis != null) {
                     bis.close();
@@ -135,6 +130,9 @@ public class HttpWorker implements NewTaskCallable<Void> {
                 e.printStackTrace();
             }
         }
+
+        Range download = downloadCount == 0 ? Range.INVALID_RANGE : new Range(range.getStart(), range.getStart() + downloadCount - 1);
+        return download;
     }
 
 }
