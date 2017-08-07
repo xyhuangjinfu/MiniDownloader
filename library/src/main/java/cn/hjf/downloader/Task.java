@@ -10,14 +10,22 @@ public class Task implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
+    public enum Status {
+        NEW,
+        RUNNING,
+        STOPPED,
+        FINISH
+    }
+
     private final String urlStr;
     private final String filePath;
     private Listener listener;
     private ErrorListener errorListener;
 
     /**
-     * Used to continue download
+     * Internal state of task.
      */
+    private Status status;
     private Resource resource;
     private Progress progress;
 
@@ -26,6 +34,7 @@ public class Task implements Serializable {
         this.filePath = filePath;
         this.listener = listener;
         this.errorListener = errorListener;
+        status = Status.NEW;
     }
 
     public String getUrlStr() {
@@ -58,6 +67,14 @@ public class Task implements Serializable {
 
     public Listener getListener() {
         return listener;
+    }
+
+    public Status getStatus() {
+        return status;
+    }
+
+    void setStatus(Status status) {
+        this.status = status;
     }
 
     @Override

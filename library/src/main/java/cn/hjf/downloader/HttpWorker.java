@@ -4,6 +4,7 @@ import android.content.Context;
 import android.os.Process;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.util.Log;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
@@ -17,15 +18,12 @@ import java.util.concurrent.RunnableFuture;
  * Created by huangjinfu on 2017/8/7.
  */
 
-public class HttpWorker extends Worker implements CustomFutureCallable<Range> {
+public class HttpWorker extends Worker implements CustomFutureCallable<Long> {
 
     @Nullable
     private HttpResource httpResource;
     @Nullable
     private Progress progress;
-
-//    private Range taskRange;
-//    private Range downloadedRange;
 
     private volatile boolean executed;
     private volatile boolean quit;
@@ -33,18 +31,12 @@ public class HttpWorker extends Worker implements CustomFutureCallable<Range> {
 
     public HttpWorker(@NonNull Context context, @NonNull Task task) {
         super(context, task);
-
         this.httpResource = (HttpResource) task.getResource();
-
         this.progress = task.getProgress();
-//        if (progress != null) {
-//            Progress downloaded = task.getProgress();
-//            taskRange = new Range(downloaded.getDownloadRange().getEnd() + 1, downloaded.getTotal() - 1);
-//        }
     }
 
     @Override
-    public Range call() throws Exception {
+    public Long call() throws Exception {
         /** Mark this task be executed. */
         executed = true;
 
@@ -59,6 +51,7 @@ public class HttpWorker extends Worker implements CustomFutureCallable<Range> {
         addHeader(connection);
 
         /** Notify start. */
+        task.setStatus(Task.Status.RUNNING);
         task.getListener().onStart(task);
 
         /** Remote resource modified.*/
@@ -81,18 +74,15 @@ public class HttpWorker extends Worker implements CustomFutureCallable<Range> {
             }
 
             /** Download */
-            Range downloadedRange = readAndWrite(connection);
+            readAndWrite(connection);
 
-            if (downloadedRange != null) {
-                /** Notify finish. */
-                System.out.println(downloadedRange.getEnd() + "  <>  " + (progress.getTotal() - 1));
-                if (downloadedRange.getEnd() == progress.getTotal() - 1) {
-                    handleFinish();
-                } else {
-                    handleStop(downloadedRange);
-                }
-                return downloadedRange;
+            /** Notify finish. */
+            if (progress.finished()) {
+                handleFinish();
+            } else {
+                handleStop();
             }
+            return progress.getDownloaded();
         }
 
         /** Notify error. */
@@ -102,8 +92,8 @@ public class HttpWorker extends Worker implements CustomFutureCallable<Range> {
     }
 
     @Override
-    public RunnableFuture<Range> newTaskFor() {
-        return new FutureTask<Range>(this) {
+    public RunnableFuture<Long> newTaskFor() {
+        return new FutureTask<Long>(this) {
             @Override
             public boolean cancel(boolean mayInterruptIfRunning) {
                 if (executed) {
@@ -127,28 +117,31 @@ public class HttpWorker extends Worker implements CustomFutureCallable<Range> {
         task.getErrorListener().onResourceModified(task);
     }
 
-    private void handleStop(Range downloaded) {
+    private void handleStop() {
         /** Notify stop. */
+        task.setStatus(Task.Status.STOPPED);
         task.getListener().onStop(task);
         /** Save stopped task. */
-        saveStoppedTask(downloaded);
+        saveStoppedTask();
     }
 
     private void handleFinish() {
         /** Delete task from disk if exist.*/
         FileUtil.deleteTask(context, task);
         /** Notify finish. */
+        task.setStatus(Task.Status.FINISH);
         task.getListener().onFinish(task);
     }
 
     private void handleNullProgress(HttpURLConnection connection) throws Exception {
-        progress = new Progress();
         /** Get content Length. */
         String lenStr = connection.getHeaderField("Content-Length");
         if (lenStr == null || "".equals(lenStr)) {
             throw new IllegalStateException("Unknown Content-Length!");
         }
-        progress.setTotal(Long.valueOf(lenStr));
+        progress = new Progress(Long.valueOf(lenStr));
+        /** Set progress for task. */
+        task.setProgress(progress);
     }
 
     private void addHeader(HttpURLConnection connection) {
@@ -160,30 +153,38 @@ public class HttpWorker extends Worker implements CustomFutureCallable<Range> {
                 connection.setRequestProperty("If-Unmodified-Since", httpResource.geteTag());
             }
         }
-        if (progress != null && progress.getDownloadRange() != null) {
-            connection.setRequestProperty("Range", "bytes=" + (progress.getDownloadRange().getEnd() + 1) + "-" + (progress.getTotal() - 1));
+        if (progress != null) {
+            connection.setRequestProperty("Range", "bytes=" + (progress.getDownloaded()) + "-" + (progress.getTotal() - 1));
         }
     }
 
     @Nullable
-    private Range readAndWrite(HttpURLConnection connection) {
+    private Long readAndWrite(HttpURLConnection connection) {
         RandomAccessFile randomAccessFile = null;
         BufferedInputStream bis = null;
         long downloadCount = 0;
+        long lastNotifiedCount = 0;
         try {
-            bis = new BufferedInputStream(connection.getInputStream());
+            bis = new BufferedInputStream(connection.getInputStream(), 1024 * 1024);
 
             randomAccessFile = new RandomAccessFile(task.getFilePath(), "rw");
-            if (progress.getDownloadRange() != null) {
-                downloadCount = progress.getDownloadRange().getEnd() + 1;
-                randomAccessFile.seek(progress.getDownloadRange().getEnd() + 1);
+            if (progress != null) {
+                downloadCount = progress.getDownloaded();
+                lastNotifiedCount = downloadCount;
+                randomAccessFile.seek(progress.getDownloaded());
             }
 
             int readCount;
             while ((readCount = bis.read(buffer)) != -1) {
                 randomAccessFile.write(buffer, 0, readCount);
                 downloadCount += readCount;
-                task.getListener().onProgress(task, progress.getTotal(), downloadCount);
+
+                /** Notify and update progress */
+                progress.setDownloaded(downloadCount);
+                if (needNotify(progress.getTotal(), lastNotifiedCount, downloadCount)) {
+                    task.getListener().onProgress(task, progress);
+                    lastNotifiedCount = downloadCount;
+                }
 
                 /** Time to quit. */
                 if (quit) {
@@ -205,19 +206,18 @@ public class HttpWorker extends Worker implements CustomFutureCallable<Range> {
             }
         }
 
-        if (downloadCount == 0) {
-            return null;
-        }
-        return new Range(0, downloadCount - 1);
+        return downloadCount;
     }
 
-    private void saveStoppedTask(Range downloaded) {
+    private void saveStoppedTask() {
         /** Update progress and resource */
-        Progress newProgress = new Progress(progress.getTotal(), downloaded);
-        task.setProgress(newProgress);
         task.setResource(httpResource);
         /** Save to disk. */
         FileUtil.saveTask(context, task);
+    }
+
+    private boolean needNotify(long total, long lastNotifiedCount, long downloadCount) {
+        return (downloadCount - lastNotifiedCount) >= total / 100;
     }
 
 }

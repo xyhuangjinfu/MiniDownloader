@@ -8,7 +8,7 @@ public interface Listener {
 
     void onStart(Task task);
 
-    void onProgress(Task task, long total, long progress);
+    void onProgress(Task task, Progress progress);
 
     void onStop(Task task);
 

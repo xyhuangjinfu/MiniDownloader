@@ -10,30 +10,26 @@ public class Progress implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private long total;
-    private Range downloadRange;
+    private final long total;
+    private volatile long downloaded;
 
-    public Progress() {
-    }
-
-    public Progress(long total, Range downloadRange) {
+    public Progress(long total) {
         this.total = total;
-        this.downloadRange = downloadRange;
     }
 
     public long getTotal() {
         return total;
     }
 
-    public Range getDownloadRange() {
-        return downloadRange;
+    public long getDownloaded() {
+        return downloaded;
     }
 
-    void setDownloadRange(Range downloadRange) {
-        this.downloadRange = downloadRange;
+    void setDownloaded(long downloaded) {
+        this.downloaded = downloaded;
     }
 
-    void setTotal(long total) {
-        this.total = total;
+    boolean finished() {
+        return total == downloaded;
     }
 }
