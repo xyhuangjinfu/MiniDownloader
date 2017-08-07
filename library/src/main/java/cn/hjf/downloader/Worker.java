@@ -7,7 +7,7 @@ import android.support.annotation.NonNull;
  * Created by huangjinfu on 2017/8/7.
  */
 
-public abstract class Worker {
+abstract class Worker {
 
     @NonNull
     protected Context context;

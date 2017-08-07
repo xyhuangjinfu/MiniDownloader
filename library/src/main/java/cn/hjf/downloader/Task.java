@@ -52,7 +52,7 @@ public class Task implements Serializable, Comparable<Task> {
         return urlStr;
     }
 
-    public Resource getResource() {
+    Resource getResource() {
         return resource;
     }
 

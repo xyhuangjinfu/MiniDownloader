@@ -7,6 +7,6 @@ import java.util.concurrent.RunnableFuture;
  * Created by huangjinfu on 2017/8/7.
  */
 
-public interface CustomFutureCallable<T> extends Callable<T> {
+interface CustomFutureCallable<T> extends Callable<T> {
     RunnableFuture<T> newTaskFor();
 }

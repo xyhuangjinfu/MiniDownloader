@@ -17,7 +17,7 @@ import java.util.concurrent.RunnableFuture;
  * Created by huangjinfu on 2017/8/7.
  */
 
-public class HttpWorker extends Worker implements CustomFutureCallable<Task> {
+class HttpWorker extends Worker implements CustomFutureCallable<Task> {
 
     @Nullable
     private HttpResource httpResource;
