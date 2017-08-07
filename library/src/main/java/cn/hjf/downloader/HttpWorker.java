@@ -4,7 +4,6 @@ import android.content.Context;
 import android.os.Process;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.util.Log;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
@@ -18,7 +17,7 @@ import java.util.concurrent.RunnableFuture;
  * Created by huangjinfu on 2017/8/7.
  */
 
-public class HttpWorker extends Worker implements CustomFutureCallable<Long> {
+public class HttpWorker extends Worker implements CustomFutureCallable<Task> {
 
     @Nullable
     private HttpResource httpResource;
@@ -29,19 +28,25 @@ public class HttpWorker extends Worker implements CustomFutureCallable<Long> {
     private volatile boolean quit;
     private byte[] buffer = new byte[1024 * 1024];
 
-    public HttpWorker(@NonNull Context context, @NonNull Task task) {
-        super(context, task);
+    public HttpWorker(@NonNull Context context, @NonNull TaskManager taskManager, @NonNull Task task) {
+        super(context, taskManager, task);
         this.httpResource = (HttpResource) task.getResource();
         this.progress = task.getProgress();
     }
 
     @Override
-    public Long call() throws Exception {
+    public Task call() throws Exception {
         /** Mark this task be executed. */
         executed = true;
 
         /** Downgrade download thread priority. */
         Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
+
+        /* Create dest file parent dirs. */
+        if (!FileUtil.createParentDirs(task.getFilePath())) {
+            task.getErrorListener().onError(task, new Exception("cannot create parent dir"));
+            return task;
+        }
 
         /** Connect server. */
         URL url = new URL(task.getUrlStr());
@@ -51,13 +56,13 @@ public class HttpWorker extends Worker implements CustomFutureCallable<Long> {
         addHeader(connection);
 
         /** Notify start. */
-        task.setStatus(Task.Status.RUNNING);
+        taskManager.runTask(task);
         task.getListener().onStart(task);
 
         /** Remote resource modified.*/
         if (connection.getResponseCode() == HttpURLConnection.HTTP_PRECON_FAILED) {
             handlePreconditionFailed();
-            return null;
+            return task;
         }
 
         /** Response 206 or 200, download. */
@@ -69,7 +74,7 @@ public class HttpWorker extends Worker implements CustomFutureCallable<Long> {
                     handleNullProgress(connection);
                 } catch (Exception e) {
                     task.getErrorListener().onError(task, e);
-                    return null;
+                    return task;
                 }
             }
 
@@ -82,18 +87,21 @@ public class HttpWorker extends Worker implements CustomFutureCallable<Long> {
             } else {
                 handleStop();
             }
-            return progress.getDownloaded();
+            return task;
         }
 
         /** Notify error. */
         task.getErrorListener().onError(task, new IOException("Server Error!"));
 
-        return null;
+        /** close connection */
+        connection.disconnect();
+
+        return task;
     }
 
     @Override
-    public RunnableFuture<Long> newTaskFor() {
-        return new FutureTask<Long>(this) {
+    public RunnableFuture<Task> newTaskFor() {
+        return new FutureTask<Task>(this) {
             @Override
             public boolean cancel(boolean mayInterruptIfRunning) {
                 if (executed) {
@@ -119,7 +127,7 @@ public class HttpWorker extends Worker implements CustomFutureCallable<Long> {
 
     private void handleStop() {
         /** Notify stop. */
-        task.setStatus(Task.Status.STOPPED);
+        taskManager.stopTask(task);
         task.getListener().onStop(task);
         /** Save stopped task. */
         saveStoppedTask();
@@ -129,7 +137,7 @@ public class HttpWorker extends Worker implements CustomFutureCallable<Long> {
         /** Delete task from disk if exist.*/
         FileUtil.deleteTask(context, task);
         /** Notify finish. */
-        task.setStatus(Task.Status.FINISH);
+        taskManager.finishTask(task);
         task.getListener().onFinish(task);
     }
 

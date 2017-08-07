@@ -2,12 +2,15 @@ package cn.hjf.downloader;
 
 import android.content.Context;
 import android.support.annotation.NonNull;
-import android.util.Log;
 
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RunnableFuture;
@@ -21,13 +24,31 @@ import java.util.concurrent.TimeUnit;
 public final class MiniDownloader {
 
     private Context context;
-    private final ExecutorService workExecutor;
+    private ExecutorService workExecutor;
+    private CompletionService<Task> workCompletionService;
 
-    private final List<Worker> workerList;
-    private final List<Future> workerFutureList;
+    private ExecutorService waitFinishExecutor;
 
-    public MiniDownloader(Context context) {
+    private Map<Task, Future<Task>> workerFutureList;
+
+    private TaskManager taskManager;
+
+    private volatile boolean quit;
+
+    private static class InstanceHolder {
+        static MiniDownloader instance = new MiniDownloader();
+    }
+
+    public static MiniDownloader getInstance() {
+        return InstanceHolder.instance;
+    }
+
+    private MiniDownloader() {
+    }
+
+    public void init(Context context) {
         this.context = context.getApplicationContext();
+
         this.workExecutor = new ThreadPoolExecutor(6, 6, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>()) {
             @Override
             protected <T> RunnableFuture<T> newTaskFor(Callable<T> callable) {
@@ -37,8 +58,25 @@ public final class MiniDownloader {
                 return super.newTaskFor(callable);
             }
         };
-        workerList = new ArrayList<>();
-        workerFutureList = new ArrayList<>();
+        this.workCompletionService = new ExecutorCompletionService(workExecutor);
+
+        this.waitFinishExecutor = Executors.newSingleThreadExecutor();
+        waitFinishExecutor.submit(waitFinishTask);
+
+        workerFutureList = new HashMap<>();
+
+        taskManager = new TaskManager();
+        taskManager.init(context);
+    }
+
+    public void quit() {
+        for (Future<Task> f : workerFutureList.values()) {
+            f.cancel(false);
+        }
+        workExecutor.shutdown();
+
+        quit = true;
+        waitFinishExecutor.shutdown();
     }
 
     public void start(@NonNull Task task) {
@@ -47,9 +85,8 @@ public final class MiniDownloader {
         }
 
         if (task.getUrlStr().toUpperCase().startsWith("HTTP")) {
-            HttpWorker httpWorker = new HttpWorker(context, task);
-            workerList.add(httpWorker);
-            workerFutureList.add(workExecutor.submit(httpWorker));
+            HttpWorker httpWorker = new HttpWorker(context, taskManager, task);
+            workerFutureList.put(task, workCompletionService.submit(httpWorker));
         }
     }
 
@@ -58,18 +95,34 @@ public final class MiniDownloader {
             throw new IllegalArgumentException("task must not be null!");
         }
 
-        int index = -1;
-        for (int i = 0; i < workerList.size(); i++) {
-            if (task.equals(workerList.get(i).getTask())) {
-                index = i;
-            }
-        }
+        Future<Task> future = workerFutureList.remove(task);
 
-        if (index != -1) {
-            workerFutureList.get(index).cancel(false);
-            workerFutureList.remove(index);
-            workerList.remove(index);
+        if (future != null) {
+            future.cancel(false);
         }
 
     }
+
+    public List<Task> getStoppedTaskList() {
+        return taskManager.getStoppedTask();
+    }
+
+    public void setDebuggable(boolean debuggable) {
+        Debug.debug = debuggable;
+    }
+
+    private Callable<Void> waitFinishTask = new Callable<Void>() {
+        @Override
+        public Void call() throws Exception {
+            while (!quit) {
+                try {
+                    Future<Task> f = workCompletionService.take();
+                    workerFutureList.remove(f.get());
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            return null;
+        }
+    };
 }

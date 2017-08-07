@@ -3,6 +3,7 @@ package cn.hjf.downloader;
 import android.content.Context;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.util.Log;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -18,6 +19,8 @@ import java.util.List;
  */
 
 class FileUtil {
+
+    private static final String TAG = Debug.appLogPrefix + "FileUtil";
 
     /**
      * ************************************************************************************************************
@@ -44,10 +47,12 @@ class FileUtil {
     }
 
     public static boolean saveTask(Context context, @NonNull Task task) {
-        if (!createParentDirs(urlToFileName(task.getUrlStr()))) {
+        File file = new File(getRootDir(context), urlToFileName(task.getUrlStr()));
+
+        if (!createParentDirs(file.getAbsolutePath())) {
             return false;
         }
-        File file = new File(getRootDir(context), urlToFileName(task.getUrlStr()));
+
         ObjectOutputStream oos = null;
         try {
             oos = new ObjectOutputStream(new FileOutputStream(file));
@@ -82,6 +87,10 @@ class FileUtil {
      */
 
     public static boolean createParentDirs(String path) {
+        if (Debug.debug) {
+            Log.e(TAG, "createParentDirs : " + path);
+        }
+
         File file = new File(path);
         if (!file.getParentFile().exists()) {
             return file.getParentFile().mkdirs();
@@ -104,8 +113,8 @@ class FileUtil {
 
     private static String urlToFileName(String urlStr) {
         int firstHalfLength = urlStr.length() / 2;
-        String fileName = String.valueOf(urlStr.substring(0, firstHalfLength).hashCode());
-        fileName += String.valueOf(urlStr.substring(firstHalfLength).hashCode());
+        String fileName = String.valueOf(Math.abs(urlStr.substring(0, firstHalfLength).hashCode()));
+        fileName += String.valueOf(Math.abs(urlStr.substring(firstHalfLength).hashCode()));
         return fileName;
     }
 

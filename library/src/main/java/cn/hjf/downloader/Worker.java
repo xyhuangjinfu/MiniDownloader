@@ -12,17 +12,16 @@ public abstract class Worker {
     @NonNull
     protected Context context;
     @NonNull
+    protected TaskManager taskManager;
+    @NonNull
     protected Task task;
 
     public Worker(
             @NonNull Context context,
+            @NonNull TaskManager taskManager,
             @NonNull Task task) {
         this.context = context;
+        this.taskManager = taskManager;
         this.task = task;
-    }
-
-    @NonNull
-    public Task getTask() {
-        return task;
     }
 }

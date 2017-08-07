@@ -5,8 +5,8 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -24,7 +24,6 @@ public class MainActivity extends AppCompatActivity {
     private TaskAdapter taskAdapter;
     private List<Task> taskList = new ArrayList<>();
     private Handler handler = new Handler(Looper.getMainLooper());
-    private MiniDownloader miniDownloader;
 
     private Listener listener = new Listener() {
         @Override
@@ -50,12 +49,12 @@ public class MainActivity extends AppCompatActivity {
     private ErrorListener errorListener = new ErrorListener() {
         @Override
         public void onResourceModified(Task task) {
-            refreshData();
+            showError("onResourceModified");
         }
 
         @Override
         public void onError(Task task, Exception error) {
-            refreshData();
+            showError(error.getMessage());
         }
     };
 
@@ -64,7 +63,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        miniDownloader = new MiniDownloader(this);
+        MiniDownloader.getInstance().init(this);
+        MiniDownloader.getInstance().setDebuggable(true);
 
         taskListView = (ListView) findViewById(R.id.taskLv);
         taskList.addAll(createTask());
@@ -76,13 +76,12 @@ public class MainActivity extends AppCompatActivity {
         taskAdapter.setOnEventListener(new TaskAdapter.OnEventListener() {
             @Override
             public void onStart(Task task) {
-                miniDownloader.start(task);
+                MiniDownloader.getInstance().start(task);
             }
 
             @Override
             public void onStop(Task task) {
-                Log.e("O_O", "onStop");
-                miniDownloader.stop(task);
+                MiniDownloader.getInstance().stop(task);
             }
         });
     }
@@ -117,5 +116,20 @@ public class MainActivity extends AppCompatActivity {
                 taskAdapter.notifyDataSetChanged();
             }
         });
+    }
+
+    private void showError(final String msg) {
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    @Override
+    protected void onDestroy() {
+        MiniDownloader.getInstance().quit();
+        super.onDestroy();
     }
 }
