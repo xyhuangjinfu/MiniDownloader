@@ -67,6 +67,7 @@ public class MainActivity extends AppCompatActivity {
         MiniDownloader.getInstance().setDebuggable(true);
 
         taskListView = (ListView) findViewById(R.id.taskLv);
+        taskList.addAll(unfinishedTasks());
         taskList.addAll(createTask());
 
         taskAdapter = new TaskAdapter(this, taskList);
@@ -106,6 +107,16 @@ public class MainActivity extends AppCompatActivity {
                         errorListener)
         );
 
+        return taskList;
+    }
+
+    private List<Task> unfinishedTasks() {
+        List<Task> taskList = new ArrayList<>();
+                        taskList.addAll(MiniDownloader.getInstance().getStoppedTaskList());
+        for (int i = 0; i < taskList.size(); i++) {
+            taskList.get(i).setListener(listener);
+            taskList.get(i).setErrorListener(errorListener);
+        }
         return taskList;
     }
 

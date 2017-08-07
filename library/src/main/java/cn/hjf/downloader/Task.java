@@ -31,10 +31,10 @@ public class Task implements Serializable, Comparable<Task> {
     /**
      * Internal state of task.
      */
-    private volatile Status status;
+    private volatile Status status = Status.NEW;
     private Resource resource;
     private Progress progress;
-    private Priority priority;
+    private Priority priority = Priority.NORMAL;
 
     public Task(String urlStr, String filePath, Listener listener, ErrorListener errorListener) {
         this(urlStr, filePath, listener, errorListener, Priority.NORMAL);
@@ -45,7 +45,6 @@ public class Task implements Serializable, Comparable<Task> {
         this.filePath = filePath;
         this.listener = listener;
         this.errorListener = errorListener;
-        status = Status.NEW;
         this.priority = priority;
     }
 
@@ -65,6 +64,10 @@ public class Task implements Serializable, Comparable<Task> {
         return errorListener;
     }
 
+    public void setErrorListener(ErrorListener errorListener) {
+        this.errorListener = errorListener;
+    }
+
     void setProgress(Progress progress) {
         this.progress = progress;
     }
@@ -79,6 +82,10 @@ public class Task implements Serializable, Comparable<Task> {
 
     public Listener getListener() {
         return listener;
+    }
+
+    public void setListener(Listener listener) {
+        this.listener = listener;
     }
 
     public Status getStatus() {

@@ -12,7 +12,7 @@ import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.RunnableFuture;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -49,7 +49,7 @@ public final class MiniDownloader {
     public void init(Context context) {
         this.context = context.getApplicationContext();
 
-        this.workExecutor = new ThreadPoolExecutor(6, 6, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>()) {
+        this.workExecutor = new ThreadPoolExecutor(6, 6, 0L, TimeUnit.MILLISECONDS, new PriorityBlockingQueue<Runnable>()) {
             @Override
             protected <T> RunnableFuture<T> newTaskFor(Callable<T> callable) {
                 if (callable instanceof CustomFutureCallable) {
@@ -80,8 +80,8 @@ public final class MiniDownloader {
     }
 
     public void start(@NonNull Task task) {
-        if (task == null) {
-            throw new IllegalArgumentException("task must not be null!");
+        if (!checkTask(task)) {
+            throw new IllegalArgumentException("task ,urlStr, filePath, listener, errorListener must not be null!");
         }
 
         if (task.getUrlStr().toUpperCase().startsWith("HTTP")) {
@@ -91,8 +91,8 @@ public final class MiniDownloader {
     }
 
     public void stop(@NonNull Task task) {
-        if (task == null) {
-            throw new IllegalArgumentException("task must not be null!");
+        if (!checkTask(task)) {
+            throw new IllegalArgumentException("task ,urlStr, filePath, listener, errorListener must not be null!");
         }
 
         Future<Task> future = workerFutureList.remove(task);
@@ -125,4 +125,15 @@ public final class MiniDownloader {
             return null;
         }
     };
+
+    private boolean checkTask(@NonNull Task task) {
+        if (task == null
+                || task.getUrlStr() == null
+                || task.getFilePath() == null
+                || task.getListener() == null
+                || task.getErrorListener() == null) {
+            return false;
+        }
+        return true;
+    }
 }
