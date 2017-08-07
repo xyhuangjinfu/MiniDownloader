@@ -1,5 +1,6 @@
 package cn.hjf.downloader;
 
+import android.content.Context;
 import android.support.annotation.NonNull;
 
 import java.util.ArrayList;
@@ -18,12 +19,14 @@ import java.util.concurrent.TimeUnit;
 
 public final class MiniDownloader {
 
+    private Context context;
     private final ExecutorService workExecutor;
 
     private final List<Worker> workerList;
     private final List<Future> workerFutureList;
 
-    public MiniDownloader() {
+    public MiniDownloader(Context context) {
+        this.context = context.getApplicationContext();
         this.workExecutor = new ThreadPoolExecutor(6, 6, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>()) {
             @Override
             protected <T> RunnableFuture<T> newTaskFor(Callable<T> callable) {
@@ -43,7 +46,7 @@ public final class MiniDownloader {
         }
 
         if (task.getUrlStr().toUpperCase().startsWith("HTTP")) {
-            HttpWorker httpWorker = new HttpWorker(task);
+            HttpWorker httpWorker = new HttpWorker(context, task);
             workerList.add(httpWorker);
             workerFutureList.add(workExecutor.submit(httpWorker));
         }

@@ -1,5 +1,6 @@
 package cn.hjf.downloader;
 
+import android.content.Context;
 import android.support.annotation.NonNull;
 
 /**
@@ -9,9 +10,14 @@ import android.support.annotation.NonNull;
 public abstract class Worker {
 
     @NonNull
+    protected Context context;
+    @NonNull
     protected Task task;
 
-    public Worker(@NonNull Task task) {
+    public Worker(
+            @NonNull Context context,
+            @NonNull Task task) {
+        this.context = context;
         this.task = task;
     }
 

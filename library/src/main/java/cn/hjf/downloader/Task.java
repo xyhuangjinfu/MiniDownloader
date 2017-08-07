@@ -1,17 +1,23 @@
 package cn.hjf.downloader;
 
+import java.io.Serializable;
+
 /**
  * Created by huangjinfu on 2017/8/7.
  */
 
-public class Task {
+public class Task implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private final String urlStr;
     private final String filePath;
     private Listener listener;
     private ErrorListener errorListener;
 
-    /* Used to continue download */
+    /**
+     * Used to continue download
+     */
     private Resource resource;
     private Progress progress;
 

@@ -1,13 +1,20 @@
 package cn.hjf.downloader;
 
+import java.io.Serializable;
+
 /**
  * Created by huangjinfu on 2017/8/7.
  */
 
-public class Progress {
+public class Progress implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private long total;
     private Range downloadRange;
+
+    public Progress() {
+    }
 
     public Progress(long total, Range downloadRange) {
         this.total = total;
