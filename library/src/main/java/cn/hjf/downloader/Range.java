@@ -1,16 +1,12 @@
 package cn.hjf.downloader;
 
-import java.io.Serializable;
-
 /**
- * Created by huangjinfu on 2017/8/5.
+ * Created by huangjinfu on 2017/8/7.
  */
 
-class Range implements Serializable {
+public class Range {
 
-    private static final long serialVersionUID = 1L;
-
-    public static final Range INVALID_RANGE = new Range(-1, -1);
+    public static final Range INVALID = new Range(-1, -1);
 
     private final long start;
     private final long end;

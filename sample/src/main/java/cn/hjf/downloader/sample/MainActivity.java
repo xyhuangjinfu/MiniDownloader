@@ -13,13 +13,16 @@ import java.io.File;
 
 import cn.hjf.downloader.ErrorListener;
 import cn.hjf.downloader.Listener;
+import cn.hjf.downloader.MiniDownloader;
 import cn.hjf.downloader.Task;
-import cn.hjf.downloader.HttpDownloader;
 
 public class MainActivity extends AppCompatActivity {
 
     ProgressBar pb1;
     Button pauseBtn1;
+    Button startBtn1;
+
+
     Task sfdl = null;
 
     ProgressBar pb2;
@@ -32,10 +35,11 @@ public class MainActivity extends AppCompatActivity {
 
         pb1 = (ProgressBar) findViewById(R.id.pb1);
         pauseBtn1 = (Button) findViewById(R.id.pause1);
+        startBtn1 = (Button) findViewById(R.id.start1);
 
         pb2 = (ProgressBar) findViewById(R.id.pb2);
 
-        final HttpDownloader httpDownloader = new HttpDownloader();
+        final MiniDownloader miniDownloader = new MiniDownloader();
 
         String urlStr = "http://imgsrc.baidu.com/imgad/pic/item/267f9e2f07082838b5168c32b299a9014c08f1f9.jpg";
         String filePath = Environment.getExternalStorageDirectory().getAbsolutePath()
@@ -55,85 +59,60 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 if (sfdl != null) {
-                    httpDownloader.pause(sfdl);
+                    miniDownloader.stop(sfdl);
+                }
+            }
+        });
+        startBtn1.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (sfdl != null) {
+                    miniDownloader.start(sfdl);
                 }
             }
         });
 
         try {
 
-            sfdl = httpDownloader.download(this, url_1, path_1, new Listener() {
-                @Override
-                public void onStart() {
-                    Log.e("O_O", "onStart");
-                }
-
-                @Override
-                public void onProgress(final long total, final long progress) {
-//                    Log.e("O_O", "onProgress, total : " + total + "  -  progress : " + progress);
-
-                    handler.post(new Runnable() {
+            sfdl = new Task(
+                    url_1,
+                    path_1,
+                    new Listener() {
                         @Override
-                        public void run() {
-                            pb1.setMax(100);
-                            pb1.setProgress((int) (progress * 100 / total));
+                        public void onStart(Task task) {
+                            Log.e("O_O", "onStart");
                         }
-                    });
-                }
 
-                @Override
-                public void onFinish() {
-                    Log.e("O_O", "onFinish");
-                }
+                        @Override
+                        public void onProgress(Task task, long total, long progress) {
+                            Log.e("O_O", "onProgress : " + total + " -> " + progress);
+                        }
 
-            }, new ErrorListener() {
-                @Override
-                public void onInvalidUrl(String urlStr) {
-                    Log.e("O_O", "onInvalidUrl : " + urlStr);
-                }
+                        @Override
+                        public void onStop(Task task) {
+                            Log.e("O_O", "onStop");
+                        }
 
-                @Override
-                public void onError(Exception error) {
-                    Log.e("O_O", "onError : " + error.getMessage());
-                }
-            });
+                        @Override
+                        public void onFinish(Task task) {
+                            Log.e("O_O", "onFinish");
+                        }
+                    },
+                    new ErrorListener() {
+                        @Override
+                        public void onResourceModified(Task task) {
+                            Log.e("O_O", "onResourceModified");
+                        }
+
+                        @Override
+                        public void onError(Task task, Exception error) {
+                            Log.e("O_O", "onError : " + error);
+                        }
+                    }
+            );
+           miniDownloader.start(sfdl);
 
 
-//            httpDownloader.download(url_2, path_2, new Listener() {
-//                @Override
-//                public void onStart() {
-//                    Log.e("O_O", "onStart");
-//                }
-//
-//                @Override
-//                public void onProgress(final long total, final long progress) {
-////                    Log.e("O_O", "onProgress, total : " + total + "  -  progress : " + progress);
-//
-//                    handler.post(new Runnable() {
-//                        @Override
-//                        public void run() {
-//                            pb2.setMax(100);
-//                            pb2.setProgress((int) (progress * 100 / total));
-//                        }
-//                    });
-//                }
-//
-//                @Override
-//                public void onFinish() {
-//                    Log.e("O_O", "onFinish");
-//                }
-//
-//            }, new ErrorListener() {
-//                @Override
-//                public void onInvalidUrl(String urlStr) {
-//                    Log.e("O_O", "onInvalidUrl : " + urlStr);
-//                }
-//
-//                @Override
-//                public void onError(Exception error) {
-//                    Log.e("O_O", "onError : " + error.getMessage());
-//                }
-//            });
         } catch (Exception e) {
             e.printStackTrace();
         }

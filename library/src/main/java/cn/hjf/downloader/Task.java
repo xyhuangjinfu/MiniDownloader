@@ -1,39 +1,21 @@
 package cn.hjf.downloader;
 
-import android.support.annotation.NonNull;
-
-import java.io.Serializable;
-
 /**
- * Created by huangjinfu on 2017/8/5.
+ * Created by huangjinfu on 2017/8/7.
  */
 
-public class Task implements Serializable {
+public class Task {
 
-    private static final long serialVersionUID = 1L;
+    private final String urlStr;
+    private final String filePath;
+    private Listener listener;
+    private ErrorListener errorListener;
 
-    public enum Status {
-        NEW,
-        RUNNING,
-        PAUSED,
-        FINISH
-    }
-
-    private String urlStr;
-    private String filePath;
-    private Status status;
-
-    private transient Listener listener;
-    private transient ErrorListener errorListener;
-
-    private Progress progress;
+    /* Used to continue download */
     private Resource resource;
+    private Progress progress;
 
-    public Task(
-            @NonNull String urlStr,
-            @NonNull String filePath,
-            @NonNull Listener listener,
-            @NonNull ErrorListener errorListener) {
+    public Task(String urlStr, String filePath, Listener listener, ErrorListener errorListener) {
         this.urlStr = urlStr;
         this.filePath = filePath;
         this.listener = listener;
@@ -44,31 +26,7 @@ public class Task implements Serializable {
         return urlStr;
     }
 
-    public String getFilePath() {
-        return filePath;
-    }
-
-    public ErrorListener getErrorListener() {
-        return errorListener;
-    }
-
-    public Listener getListener() {
-        return listener;
-    }
-
-    void setStatus(Status status) {
-        this.status = status;
-    }
-
-    public Progress getProgress() {
-        return progress;
-    }
-
-    Status getStatus() {
-        return status;
-    }
-
-    Resource getResource() {
+    public Resource getResource() {
         return resource;
     }
 
@@ -76,29 +34,39 @@ public class Task implements Serializable {
         this.resource = resource;
     }
 
+    public ErrorListener getErrorListener() {
+        return errorListener;
+    }
+
     void setProgress(Progress progress) {
         this.progress = progress;
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == this) {
-            return true;
-        }
-        if (!(obj instanceof Task)) {
-            return false;
-        }
-        Task t = (Task) obj;
+    public Progress getProgress() {
+        return progress;
+    }
 
-        return this.urlStr.equals(t.urlStr)
-                && this.filePath.equals(t.filePath);
+    public String getFilePath() {
+        return filePath;
+    }
+
+    public Listener getListener() {
+        return listener;
     }
 
     @Override
-    public int hashCode() {
-        int result = 17;
-        result = 31 * result + urlStr.hashCode();
-        result = 31 * result + filePath.hashCode();
-        return result;
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+
+        if (!(obj instanceof Task)) {
+            return false;
+        }
+
+        Task t = (Task) obj;
+
+        return t.urlStr.equals(this.urlStr) && t.filePath.equals(this.filePath);
+
     }
 }
