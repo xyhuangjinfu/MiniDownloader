@@ -5,6 +5,6 @@ package cn.hjf.downloader;
  */
 
 class Debug {
-    static String appLogPrefix = "MiniDownloader-";
+    static String appLogPrefix = "MD-";
     static boolean debug;
 }

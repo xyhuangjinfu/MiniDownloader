@@ -117,6 +117,11 @@ public class Task implements Serializable, Comparable<Task> {
     }
 
     @Override
+    public String toString() {
+        return "{url:" + urlStr + ", path:" + filePath + ", priority:" + priority + "}";
+    }
+
+    @Override
     public boolean equals(Object obj) {
         if (this == obj) {
             return true;

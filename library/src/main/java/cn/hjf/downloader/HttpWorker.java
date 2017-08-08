@@ -2,8 +2,10 @@ package cn.hjf.downloader;
 
 import android.content.Context;
 import android.os.Process;
+import android.os.SystemClock;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.util.Log;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
@@ -19,6 +21,8 @@ import java.util.concurrent.RunnableFuture;
 
 class HttpWorker extends Worker implements CustomFutureCallable<Task> {
 
+    private static final String TAG = Debug.appLogPrefix + "HttpWorker";
+
     @Nullable
     private HttpResource httpResource;
     @Nullable
@@ -27,6 +31,7 @@ class HttpWorker extends Worker implements CustomFutureCallable<Task> {
     private volatile boolean executed;
     private volatile boolean quit;
     private byte[] buffer = new byte[1024 * 1024];
+    private long startTime;
 
     public HttpWorker(@NonNull Context context, @NonNull TaskManager taskManager, @NonNull Task task) {
         super(context, taskManager, task);
@@ -121,6 +126,8 @@ class HttpWorker extends Worker implements CustomFutureCallable<Task> {
      * Handle start of this work.
      */
     private void handleStart() {
+        /** Record start time. */
+        startTime = SystemClock.elapsedRealtime();
         /** Mark task status to stopped. */
         taskManager.markRunning(task);
         /** Notify stop. */
@@ -135,6 +142,9 @@ class HttpWorker extends Worker implements CustomFutureCallable<Task> {
         taskManager.markStopped(task);
         /** Notify stop. */
         task.getListener().onStop(task);
+        /** Log if necessary */
+        if (Debug.debug)
+            Log.e(TAG, "Task stopped, used time : " + (SystemClock.elapsedRealtime() - startTime) + " ms, task : " + task);
     }
 
     /**
@@ -145,6 +155,9 @@ class HttpWorker extends Worker implements CustomFutureCallable<Task> {
         taskManager.markFinished(task);
         /** Notify finish. */
         task.getListener().onFinish(task);
+        /** Log if necessary */
+        if (Debug.debug)
+            Log.e(TAG, "Task finished, used time : " + (SystemClock.elapsedRealtime() - startTime) + " ms, task : " + task);
     }
 
     /**
