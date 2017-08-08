@@ -5,7 +5,5 @@ package cn.hjf.downloader;
  */
 
 public interface ErrorListener {
-    void onResourceModified(Task task);
-
     void onError(Task task, Exception error);
 }

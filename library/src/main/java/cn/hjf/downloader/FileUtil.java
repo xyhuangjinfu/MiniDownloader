@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -44,6 +45,21 @@ class FileUtil {
 
         }
         return taskList;
+    }
+
+    public static void saveTaskList(Context context, Collection<Task> tasks) {
+        for (Task task : tasks) {
+            saveTask(context, task);
+        }
+    }
+
+    public static void clearAllTasks(Context context) {
+        File[] files = new File(getRootDir(context)).listFiles();
+        if (files != null) {
+            for (int i = 0; i < files.length; i++) {
+                files[i].delete();
+            }
+        }
     }
 
     public static boolean saveTask(Context context, @NonNull Task task) {

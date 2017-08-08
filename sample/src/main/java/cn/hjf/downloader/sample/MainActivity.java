@@ -47,10 +47,6 @@ public class MainActivity extends AppCompatActivity {
         }
     };
     private ErrorListener errorListener = new ErrorListener() {
-        @Override
-        public void onResourceModified(Task task) {
-            showError("onResourceModified");
-        }
 
         @Override
         public void onError(Task task, Exception error) {
@@ -112,7 +108,7 @@ public class MainActivity extends AppCompatActivity {
 
     private List<Task> unfinishedTasks() {
         List<Task> taskList = new ArrayList<>();
-                        taskList.addAll(MiniDownloader.getInstance().getStoppedTaskList());
+        taskList.addAll(MiniDownloader.getInstance().getStoppedTaskList());
         for (int i = 0; i < taskList.size(); i++) {
             taskList.get(i).setListener(listener);
             taskList.get(i).setErrorListener(errorListener);

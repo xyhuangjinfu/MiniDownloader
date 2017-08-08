@@ -11,10 +11,30 @@ public class Task implements Serializable, Comparable<Task> {
     private static final long serialVersionUID = 1L;
 
     public enum Status {
+        /**
+         * New created task.
+         */
         NEW,
+        /**
+         * Waiting in task queue.
+         */
+        WAITING,
+        /**
+         * Be executed.
+         */
         RUNNING,
+        /**
+         * Stopped by user.
+         */
         STOPPED,
-        FINISH
+        /**
+         * Normal download finish, have no error.
+         */
+        FINISHED,
+        /**
+         * Some error occurred in the download progress.
+         */
+        ERROR
     }
 
     public enum Priority {

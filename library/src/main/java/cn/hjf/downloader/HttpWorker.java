@@ -36,65 +36,69 @@ class HttpWorker extends Worker implements CustomFutureCallable<Task> {
 
     @Override
     public Task call() throws Exception {
-        /** Mark this task be executed. */
+        /** Mark this task be executed. Used by cancel task. */
         executed = true;
 
-        /** Downgrade download thread priority. */
-        Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
+        /** Start, change status and notify event. */
+        handleStart();
 
-        /* Create dest file parent dirs. */
-        if (!FileUtil.createParentDirs(task.getFilePath())) {
-            task.getErrorListener().onError(task, new Exception("cannot create parent dir"));
-            return task;
-        }
+        HttpURLConnection connection = null;
 
-        /** Connect server. */
-        URL url = new URL(task.getUrlStr());
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        try {
+            /** Downgrade download thread priority. */
+            Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
 
-        /** Add header. */
-        addHeader(connection);
+            /** Create dest file parent dirs. */
+            if (!FileUtil.createParentDirs(task.getFilePath())) {
+                /** File system error. */
+                handleError(new IOException("cannot create parent dir"));
+                return task;
+            }
 
-        /** Notify start. */
-        taskManager.runTask(task);
-        task.getListener().onStart(task);
+            /** Create http connection. */
+            URL url = new URL(task.getUrlStr());
+            connection = (HttpURLConnection) url.openConnection();
 
-        /** Remote resource modified.*/
-        if (connection.getResponseCode() == HttpURLConnection.HTTP_PRECON_FAILED) {
-            handlePreconditionFailed();
-            return task;
-        }
+            /** Add header. */
+            addHeader(connection);
 
-        /** Response 206 or 200, download. */
-        if (connection.getResponseCode() == HttpURLConnection.HTTP_PARTIAL
-                || connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
-            /** Handle null progress. */
-            if (progress == null) {
-                try {
+            /** Response 206 or 200, download. */
+            if (connection.getResponseCode() == HttpURLConnection.HTTP_PARTIAL
+                    || connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
+                /** Handle null progress. */
+                if (progress == null) {
                     handleNullProgress(connection);
-                } catch (Exception e) {
-                    task.getErrorListener().onError(task, e);
-                    return task;
                 }
+
+                /** Download */
+                readAndWrite(connection);
+
+                /** Calculate whether finished or stopped. */
+                if (progress.finished()) {
+                    handleFinish();
+                } else {
+                    handleStop();
+                }
+                return task;
             }
 
-            /** Download */
-            readAndWrite(connection);
+            /** Server error.*/
+            handleError(new IOException("Server Error!"));
 
-            /** Notify finish. */
-            if (progress.finished()) {
-                handleFinish();
-            } else {
-                handleStop();
+        } catch (Exception e) {
+            e.printStackTrace();
+            /** Some other error.*/
+            handleError(e);
+        } finally {
+            try {
+                /** Close connection */
+                if (connection != null) {
+                    connection.disconnect();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-            return task;
         }
-
-        /** Notify error. */
-        task.getErrorListener().onError(task, new IOException("Server Error!"));
-
-        /** close connection */
-        connection.disconnect();
 
         return task;
     }
@@ -113,34 +117,57 @@ class HttpWorker extends Worker implements CustomFutureCallable<Task> {
         };
     }
 
-    private void handlePreconditionFailed() {
-        /** Clear progress and resource info. */
-        task.setResource(null);
-        task.setProgress(null);
-        /** Delete task if exist on disk. */
-        FileUtil.deleteTask(context, task);
-        /** Delete last download data if exist.*/
-        FileUtil.deleteFile(task.getFilePath());
-        /** Notify remote resource modified.*/
-        task.getErrorListener().onResourceModified(task);
-    }
-
-    private void handleStop() {
+    /**
+     * Handle start of this work.
+     */
+    private void handleStart() {
+        /** Mark task status to stopped. */
+        taskManager.markRunning(task);
         /** Notify stop. */
-        taskManager.stopTask(task);
-        task.getListener().onStop(task);
-        /** Save stopped task. */
-        saveStoppedTask();
+        task.getListener().onStart(task);
     }
 
+    /**
+     * Handle stop of this work.
+     */
+    private void handleStop() {
+        /** Mark task status to stopped. */
+        taskManager.markStopped(task);
+        /** Notify stop. */
+        task.getListener().onStop(task);
+    }
+
+    /**
+     * Handle finish of this work.
+     */
     private void handleFinish() {
-        /** Delete task from disk if exist.*/
-        FileUtil.deleteTask(context, task);
+        /** Mark task status to finished. */
+        taskManager.markFinished(task);
         /** Notify finish. */
-        taskManager.finishTask(task);
         task.getListener().onFinish(task);
     }
 
+    /**
+     * Handle error of this work.
+     */
+    private void handleError(Exception error) {
+        /** Clear progress and resource info. */
+        task.setResource(null);
+        task.setProgress(null);
+        /** Delete last download data if exist.*/
+        FileUtil.deleteFile(task.getFilePath());
+        /** Mark task status to finished. */
+        taskManager.markError(task);
+        /** Notify finish. */
+        task.getErrorListener().onError(task, error);
+    }
+
+    /**
+     * New task, have no last progress.
+     *
+     * @param connection
+     * @throws Exception
+     */
     private void handleNullProgress(HttpURLConnection connection) throws Exception {
         /** Get content Length. */
         String lenStr = connection.getHeaderField("Content-Length");
@@ -152,6 +179,11 @@ class HttpWorker extends Worker implements CustomFutureCallable<Task> {
         task.setProgress(progress);
     }
 
+    /**
+     * Add some header for partial request if necessary.
+     *
+     * @param connection
+     */
     private void addHeader(HttpURLConnection connection) {
         if (httpResource != null) {
             if (httpResource.geteTag() != null && !"".equals(httpResource.geteTag())) {
@@ -166,6 +198,12 @@ class HttpWorker extends Worker implements CustomFutureCallable<Task> {
         }
     }
 
+    /**
+     * Read from network and write to disk.
+     *
+     * @param connection
+     * @return Total download count for this task.
+     */
     @Nullable
     private Long readAndWrite(HttpURLConnection connection) {
         RandomAccessFile randomAccessFile = null;
@@ -173,7 +211,7 @@ class HttpWorker extends Worker implements CustomFutureCallable<Task> {
         long downloadCount = 0;
         long lastNotifiedCount = 0;
         try {
-            bis = new BufferedInputStream(connection.getInputStream(), 1024 * 1024);
+            bis = new BufferedInputStream(connection.getInputStream());
 
             randomAccessFile = new RandomAccessFile(task.getFilePath(), "rw");
             if (progress != null) {
@@ -217,13 +255,14 @@ class HttpWorker extends Worker implements CustomFutureCallable<Task> {
         return downloadCount;
     }
 
-    private void saveStoppedTask() {
-        /** Update progress and resource */
-        task.setResource(httpResource);
-        /** Save to disk. */
-        FileUtil.saveTask(context, task);
-    }
-
+    /**
+     * Control the progress update speed, notify on high speed will increase the burden of UI thread.
+     *
+     * @param total
+     * @param lastNotifiedCount
+     * @param downloadCount
+     * @return
+     */
     private boolean needNotify(long total, long lastNotifiedCount, long downloadCount) {
         return (downloadCount - lastNotifiedCount) >= total / 100;
     }

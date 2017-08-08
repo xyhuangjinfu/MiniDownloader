@@ -1,7 +1,6 @@
 package cn.hjf.downloader.sample;
 
 import android.content.Context;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -88,13 +87,13 @@ public class TaskAdapter extends BaseAdapter {
         if (task.getStatus() == Task.Status.NEW) {
             holder.startBtn.setEnabled(true);
             holder.stopBtn.setEnabled(false);
-        } else if (task.getStatus() == Task.Status.RUNNING) {
+        } else if (task.getStatus() == Task.Status.WAITING || task.getStatus() == Task.Status.RUNNING) {
             holder.startBtn.setEnabled(false);
             holder.stopBtn.setEnabled(true);
         } else if (task.getStatus() == Task.Status.STOPPED) {
             holder.startBtn.setEnabled(true);
             holder.stopBtn.setEnabled(false);
-        } else if (task.getStatus() == Task.Status.FINISH) {
+        } else if (task.getStatus() == Task.Status.FINISHED) {
             holder.startBtn.setEnabled(false);
             holder.stopBtn.setEnabled(false);
         }
