@@ -1,5 +1,5 @@
 # MiniDownloader
-A handy multi task downloader for htttp and ftp.
+A handy multi task downloader on Android platform, which support htttp and ftp protocol. 
 
 ## How to use. ##
 #### Initial MiniDownloader. ####
