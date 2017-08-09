@@ -131,6 +131,7 @@ public final class MiniDownloader {
             @Override
             public void run() {
                 taskManager.markWaiting(task, workExecutor.submit(worker));
+                task.setStatus(Task.Status.WAITING);
             }
         });
     }

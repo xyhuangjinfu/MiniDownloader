@@ -27,6 +27,11 @@ public class MainActivity extends AppCompatActivity {
 
     private Listener listener = new Listener() {
         @Override
+        public void onWait(Task task) {
+            refreshData();
+        }
+
+        @Override
         public void onStart(Task task) {
             refreshData();
         }
