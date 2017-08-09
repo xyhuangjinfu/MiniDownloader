@@ -45,6 +45,11 @@ public class MainActivity extends AppCompatActivity {
         public void onFinish(Task task) {
             refreshData();
         }
+
+        @Override
+        public void onDelete(Task task) {
+            refreshData();
+        }
     };
     private ErrorListener errorListener = new ErrorListener() {
 
@@ -81,6 +86,11 @@ public class MainActivity extends AppCompatActivity {
             public void onStop(Task task) {
                 MiniDownloader.getInstance().stop(task);
             }
+
+            @Override
+            public void onDelete(Task task) {
+                MiniDownloader.getInstance().delete(task);
+            }
         });
     }
 
@@ -100,6 +110,14 @@ public class MainActivity extends AppCompatActivity {
                         "http://haixi.jb51.net:8080/201307/books/http_qwzn_jb51.net.rar",
                         Environment.getExternalStorageDirectory().getAbsolutePath()
                                 + File.separator + "MiniDownloader" + File.separator + "http_qwzn_jb51.rar",
+                        listener,
+                        errorListener)
+        );
+        taskList.add(
+                new Task(
+                        "http://wangshuo.jb51.net:81/201306/books/jsjkxcs_sjms_kfymxdxrjdjc_jb51.net.rar",
+                        Environment.getExternalStorageDirectory().getAbsolutePath()
+                                + File.separator + "MiniDownloader" + File.separator + "sjms.pdf",
                         listener,
                         errorListener)
         );

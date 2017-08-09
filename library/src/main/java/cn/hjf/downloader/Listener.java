@@ -13,4 +13,6 @@ public interface Listener {
     void onStop(Task task);
 
     void onFinish(Task task);
+
+    void onDelete(Task task);
 }

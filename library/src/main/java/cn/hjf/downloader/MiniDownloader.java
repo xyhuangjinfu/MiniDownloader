@@ -189,10 +189,14 @@ public final class MiniDownloader {
                         FileUtil.deleteFile(task.getFilePath());
                     }
                 }
+                /** Not need wait to cancel. Try to delete downloaded data directly. */
+                FileUtil.deleteFile(task.getFilePath());
                 /** Refresh task status. */
                 task.setStatus(Task.Status.NEW);
                 task.setProgress(null);
                 task.setResource(null);
+                /** Notify task deleted. */
+                task.getListener().onDelete(task);
             }
         });
     }
