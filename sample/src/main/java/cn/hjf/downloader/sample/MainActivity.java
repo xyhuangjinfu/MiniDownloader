@@ -105,7 +105,7 @@ public class MainActivity extends AppCompatActivity {
         );
         taskList.add(
                 new Task(
-                        "ftp://hjf:666@localhost:6666/jcip.pdf",
+                        "ftp://hjf:666@192.168.1.64:21/jcip.pdf",
                         Environment.getExternalStorageDirectory().getAbsolutePath()
                                 + File.separator + "MiniDownloader" + File.separator + "jcip.pdf",
                         listener,

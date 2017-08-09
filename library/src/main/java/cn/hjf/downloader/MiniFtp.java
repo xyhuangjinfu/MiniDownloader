@@ -51,7 +51,7 @@ final class MiniFtp {
         /** Connect server */
         String resConnect = readCommand();
         if (!resConnect.startsWith("220")) {
-            throw new Exception("Server not ready");
+            throw new Exception("Server not ready : " + resConnect);
         }
 
         /** Input user */
@@ -86,7 +86,7 @@ final class MiniFtp {
             throw new Exception("Get file status error.");
         }
         String lenStr = resSize.substring(resSize.lastIndexOf(" "));
-        return Long.valueOf(lenStr);
+        return Long.valueOf(lenStr.trim());
     }
 
     public void rest(long offset) throws Exception {
@@ -134,7 +134,7 @@ final class MiniFtp {
     }
 
     private String readCommand() throws Exception {
-        byte[] buffer = new byte[commandIS.available()];
+        byte[] buffer = new byte[500];
         commandIS.read(buffer);
         return new String(buffer);
     }
