@@ -38,9 +38,15 @@ public class Task implements Serializable, Comparable<Task> {
     }
 
     public enum Priority {
-        LOW,
-        NORMAL,
-        HIGH
+        LOW(1),
+        NORMAL(5),
+        HIGH(10);
+
+        int value;
+
+        Priority(int value) {
+            this.value = value;
+        }
     }
 
     private final String urlStr;
@@ -86,6 +92,10 @@ public class Task implements Serializable, Comparable<Task> {
 
     public void setErrorListener(ErrorListener errorListener) {
         this.errorListener = errorListener;
+    }
+
+    public Priority getPriority() {
+        return priority;
     }
 
     void setProgress(Progress progress) {
@@ -147,6 +157,6 @@ public class Task implements Serializable, Comparable<Task> {
 
     @Override
     public int compareTo(Task o) {
-        return this.priority.ordinal() - o.priority.ordinal();
+        return o.priority.value - this.priority.value;
     }
 }

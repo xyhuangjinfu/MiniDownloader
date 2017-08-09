@@ -12,7 +12,6 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
-import java.util.concurrent.FutureTask;
 import java.util.concurrent.RunnableFuture;
 
 /**
@@ -107,16 +106,7 @@ abstract class Worker implements CustomFutureCallable<Task> {
 
     @Override
     public RunnableFuture<Task> newTaskFor() {
-        return new FutureTask<Task>(this) {
-            @Override
-            public boolean cancel(boolean mayInterruptIfRunning) {
-                if (executed) {
-                    quit = true;
-                    return true;
-                }
-                return super.cancel(mayInterruptIfRunning);
-            }
-        };
+        return new MDFutureTask<Task>(this, this);
     }
 
     protected abstract void initNetworkConnect() throws Exception;
@@ -252,5 +242,23 @@ abstract class Worker implements CustomFutureCallable<Task> {
      */
     private boolean needNotify(long total, long lastNotifiedCount, long downloadCount) {
         return (downloadCount - lastNotifiedCount) >= total / 100;
+    }
+
+    /**
+     * ********************************************************************************************************************************************
+     * ********************************************************************************************************************************************
+     */
+
+    boolean isExecuted() {
+        return executed;
+    }
+
+    void setQuit(boolean quit) {
+        this.quit = quit;
+    }
+
+    @NonNull
+    Task getTask() {
+        return task;
     }
 }

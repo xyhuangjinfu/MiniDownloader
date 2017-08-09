@@ -28,6 +28,8 @@ public class TaskAdapter extends BaseAdapter {
         void onStart(Task task);
 
         void onStop(Task task);
+
+        void onDelete(Task task);
     }
 
     public TaskAdapter(Context context, List<Task> taskList) {
@@ -83,6 +85,7 @@ public class TaskAdapter extends BaseAdapter {
         }
 
         holder.statusTv.setText(task.getStatus().toString());
+        holder.priorityTv.setText(task.getPriority().toString());
 
         if (task.getStatus() == Task.Status.NEW) {
             holder.startBtn.setEnabled(true);
@@ -96,7 +99,7 @@ public class TaskAdapter extends BaseAdapter {
         } else if (task.getStatus() == Task.Status.FINISHED) {
             holder.startBtn.setEnabled(false);
             holder.stopBtn.setEnabled(false);
-        }  else if (task.getStatus() == Task.Status.ERROR) {
+        } else if (task.getStatus() == Task.Status.ERROR) {
             holder.startBtn.setEnabled(true);
             holder.stopBtn.setEnabled(false);
         }
@@ -119,6 +122,14 @@ public class TaskAdapter extends BaseAdapter {
                 }
             }
         });
+        holder.deleteBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (onEventListener != null) {
+                    onEventListener.onDelete(taskList.get(position));
+                }
+            }
+        });
     }
 
     public void setOnEventListener(OnEventListener onEventListener) {
@@ -126,16 +137,18 @@ public class TaskAdapter extends BaseAdapter {
     }
 
     private static class ViewHolder {
-        TextView infoTv, statusTv;
+        TextView infoTv, statusTv, priorityTv;
         ProgressBar pb;
-        Button startBtn, stopBtn;
+        Button startBtn, stopBtn, deleteBtn;
 
         public ViewHolder(View rootView) {
             infoTv = (TextView) rootView.findViewById(R.id.infoTv);
             statusTv = (TextView) rootView.findViewById(R.id.statusTv);
+            priorityTv = (TextView) rootView.findViewById(R.id.priorityTv);
             pb = (ProgressBar) rootView.findViewById(R.id.pb);
             startBtn = (Button) rootView.findViewById(R.id.start);
             stopBtn = (Button) rootView.findViewById(R.id.stop);
+            deleteBtn = (Button) rootView.findViewById(R.id.delete);
         }
     }
 }

@@ -25,10 +25,11 @@ final class TaskManager {
     /**
      * Task set, when a task transfer to MiniDownloader by {@link MiniDownloader#start(Task)}, it will be in this set,
      * or those unfinished task which be save to disk by {@link #saveAllUnfinishedTasks()}, will be in this set at next start up.
+     * FINISHED and ERROR task will be removed from this set.
      */
     private Set<Task> taskSet;
     /**
-     * Maps of task to there future, only waiting tasks and running tasks can be in this map.
+     * Maps of task to their future, only waiting tasks and running tasks can be in this map.
      */
     private Map<Task, Future<Task>> runningTaskFutureMap;
 

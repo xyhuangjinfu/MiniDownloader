@@ -27,6 +27,11 @@ public class MainActivity extends AppCompatActivity {
 
     private Listener listener = new Listener() {
         @Override
+        public void onWait(Task task) {
+            refreshData();
+        }
+
+        @Override
         public void onStart(Task task) {
             refreshData();
         }
@@ -43,6 +48,11 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onFinish(Task task) {
+            refreshData();
+        }
+
+        @Override
+        public void onDelete(Task task) {
             refreshData();
         }
     };
@@ -81,6 +91,11 @@ public class MainActivity extends AppCompatActivity {
             public void onStop(Task task) {
                 MiniDownloader.getInstance().stop(task);
             }
+
+            @Override
+            public void onDelete(Task task) {
+                MiniDownloader.getInstance().delete(task);
+            }
         });
     }
 
@@ -102,6 +117,15 @@ public class MainActivity extends AppCompatActivity {
                                 + File.separator + "MiniDownloader" + File.separator + "http_qwzn_jb51.rar",
                         listener,
                         errorListener)
+        );
+        taskList.add(
+                new Task(
+                        "http://wangshuo.jb51.net:81/201306/books/jsjkxcs_sjms_kfymxdxrjdjc_jb51.net.rar",
+                        Environment.getExternalStorageDirectory().getAbsolutePath()
+                                + File.separator + "MiniDownloader" + File.separator + "sjms.pdf",
+                        listener,
+                        errorListener,
+                        Task.Priority.HIGH)
         );
         taskList.add(
                 new Task(
