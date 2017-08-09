@@ -1,14 +1,16 @@
 package cn.hjf.downloader;
 
 /**
- * Created by huangjinfu on 2017/8/2.
+ * Created by huangjinfu on 2017/8/7.
  */
 
 public interface Listener {
 
-    void onStart();
+    void onStart(Task task);
 
-    void onProgress(long total, long progress);
+    void onProgress(Task task, Progress progress);
 
-    void onFinish();
+    void onStop(Task task);
+
+    void onFinish(Task task);
 }

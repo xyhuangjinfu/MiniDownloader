@@ -1,56 +1,99 @@
 package cn.hjf.downloader;
 
-import android.support.v4.util.Pair;
-
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
- * Created by huangjinfu on 2017/8/3.
+ * Created by huangjinfu on 2017/8/7.
  */
 
-public class Task implements Serializable {
+public class Task implements Serializable, Comparable<Task> {
 
     private static final long serialVersionUID = 1L;
 
     public enum Status {
+        /**
+         * New created task.
+         */
         NEW,
+        /**
+         * Waiting in task queue.
+         */
+        WAITING,
+        /**
+         * Be executed.
+         */
         RUNNING,
-        PAUSE,
-        FINISH
+        /**
+         * Stopped by user.
+         */
+        STOPPED,
+        /**
+         * Normal download finish, have no error.
+         */
+        FINISHED,
+        /**
+         * Some error occurred in the download progress.
+         */
+        ERROR
     }
 
-    private Status status;
+    public enum Priority {
+        LOW,
+        NORMAL,
+        HIGH
+    }
 
     private final String urlStr;
-    private final List<Pair<Long, Long>> ranges;
-
     private final String filePath;
-
     private transient Listener listener;
     private transient ErrorListener errorListener;
 
-    public Task(String urlStr, String filePath) {
+    /**
+     * Internal state of task.
+     */
+    private volatile Status status = Status.NEW;
+    private Resource resource;
+    private Progress progress;
+    private Priority priority = Priority.NORMAL;
+
+    public Task(String urlStr, String filePath, Listener listener, ErrorListener errorListener) {
+        this(urlStr, filePath, listener, errorListener, Priority.NORMAL);
+    }
+
+    public Task(String urlStr, String filePath, Listener listener, ErrorListener errorListener, Priority priority) {
         this.urlStr = urlStr;
         this.filePath = filePath;
-        ranges = new ArrayList<>();
-    }
-
-    public Status getStatus() {
-        return status;
-    }
-
-    public void setStatus(Status status) {
-        this.status = status;
+        this.listener = listener;
+        this.errorListener = errorListener;
+        this.priority = priority;
     }
 
     public String getUrlStr() {
         return urlStr;
     }
 
-    public List<Pair<Long, Long>> getRanges() {
-        return ranges;
+    Resource getResource() {
+        return resource;
+    }
+
+    void setResource(Resource resource) {
+        this.resource = resource;
+    }
+
+    public ErrorListener getErrorListener() {
+        return errorListener;
+    }
+
+    public void setErrorListener(ErrorListener errorListener) {
+        this.errorListener = errorListener;
+    }
+
+    void setProgress(Progress progress) {
+        this.progress = progress;
+    }
+
+    public Progress getProgress() {
+        return progress;
     }
 
     public String getFilePath() {
@@ -65,11 +108,45 @@ public class Task implements Serializable {
         this.listener = listener;
     }
 
-    public ErrorListener getErrorListener() {
-        return errorListener;
+    public Status getStatus() {
+        return status;
     }
 
-    public void setErrorListener(ErrorListener errorListener) {
-        this.errorListener = errorListener;
+    void setStatus(Status status) {
+        this.status = status;
+    }
+
+    @Override
+    public String toString() {
+        return "{url:" + urlStr + ", path:" + filePath + ", priority:" + priority + "}";
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+
+        if (!(obj instanceof Task)) {
+            return false;
+        }
+
+        Task t = (Task) obj;
+
+        return t.urlStr.equals(this.urlStr) && t.filePath.equals(this.filePath);
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = 17;
+        result = 31 * result + urlStr.hashCode();
+        result = 31 * result + filePath.hashCode();
+        return result;
+    }
+
+    @Override
+    public int compareTo(Task o) {
+        return this.priority.ordinal() - o.priority.ordinal();
     }
 }
