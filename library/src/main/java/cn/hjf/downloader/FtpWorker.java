@@ -9,9 +9,9 @@ import android.util.Log;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.RunnableFuture;
 
@@ -27,6 +27,8 @@ class FtpWorker extends Worker implements CustomFutureCallable<Task> {
     private HttpResource httpResource;
     @Nullable
     private Progress progress;
+
+    private MiniFtp miniFtp;
 
     private volatile boolean executed;
     private volatile boolean quit;
@@ -47,8 +49,6 @@ class FtpWorker extends Worker implements CustomFutureCallable<Task> {
         /** Start, change status and notify event. */
         handleStart();
 
-        HttpURLConnection connection = null;
-
         try {
             /** Downgrade download thread priority. */
             Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
@@ -60,35 +60,24 @@ class FtpWorker extends Worker implements CustomFutureCallable<Task> {
                 return task;
             }
 
-            /** Create http connection. */
-            URL url = new URL(task.getUrlStr());
-            connection = (HttpURLConnection) url.openConnection();
+            /** Create and initial ftp connection. */
+            miniFtp = new MiniFtp(task.getUrlStr());
+            miniFtp.connect();
 
-            /** Add header. */
-            addHeader(connection);
-
-            /** Response 206 or 200, download. */
-            if (connection.getResponseCode() == HttpURLConnection.HTTP_PARTIAL
-                    || connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
-                /** Handle null progress. */
-                if (progress == null) {
-                    handleNullProgress(connection);
-                }
-
-                /** Download */
-                readAndWrite(connection);
-
-                /** Calculate whether finished or stopped. */
-                if (progress.finished()) {
-                    handleFinish();
-                } else {
-                    handleStop();
-                }
-                return task;
+            /** Handle null progress. */
+            if (progress == null) {
+                handleNullProgress();
             }
 
-            /** Server error.*/
-            handleError(new IOException("Server Error!"));
+            /** Download */
+            readAndWrite(miniFtp.getInputStream());
+
+            /** Calculate whether finished or stopped. */
+            if (progress.finished()) {
+                handleFinish();
+            } else {
+                handleStop();
+            }
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -97,8 +86,8 @@ class FtpWorker extends Worker implements CustomFutureCallable<Task> {
         } finally {
             try {
                 /** Close connection */
-                if (connection != null) {
-                    connection.disconnect();
+                if (miniFtp != null) {
+                    miniFtp.close();
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -177,17 +166,9 @@ class FtpWorker extends Worker implements CustomFutureCallable<Task> {
 
     /**
      * New task, have no last progress.
-     *
-     * @param connection
-     * @throws Exception
      */
-    private void handleNullProgress(HttpURLConnection connection) throws Exception {
-        /** Get content Length. */
-        String lenStr = connection.getHeaderField("Content-Length");
-        if (lenStr == null || "".equals(lenStr)) {
-            throw new IllegalStateException("Unknown Content-Length!");
-        }
-        progress = new Progress(Long.valueOf(lenStr));
+    private void handleNullProgress() throws Exception {
+        progress = new Progress(miniFtp.size());
         /** Set progress for task. */
         task.setProgress(progress);
     }
@@ -214,17 +195,16 @@ class FtpWorker extends Worker implements CustomFutureCallable<Task> {
     /**
      * Read from network and write to disk.
      *
-     * @param connection
      * @return Total download count for this task.
      */
     @Nullable
-    private Long readAndWrite(HttpURLConnection connection) {
+    private Long readAndWrite(InputStream networkInputStream) {
         RandomAccessFile randomAccessFile = null;
         BufferedInputStream bis = null;
         long downloadCount = 0;
         long lastNotifiedCount = 0;
         try {
-            bis = new BufferedInputStream(connection.getInputStream());
+            bis = new BufferedInputStream(networkInputStream);
 
             randomAccessFile = new RandomAccessFile(task.getFilePath(), "rw");
             if (progress != null) {

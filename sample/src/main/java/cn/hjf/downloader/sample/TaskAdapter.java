@@ -96,6 +96,9 @@ public class TaskAdapter extends BaseAdapter {
         } else if (task.getStatus() == Task.Status.FINISHED) {
             holder.startBtn.setEnabled(false);
             holder.stopBtn.setEnabled(false);
+        }  else if (task.getStatus() == Task.Status.ERROR) {
+            holder.startBtn.setEnabled(true);
+            holder.stopBtn.setEnabled(false);
         }
     }
 

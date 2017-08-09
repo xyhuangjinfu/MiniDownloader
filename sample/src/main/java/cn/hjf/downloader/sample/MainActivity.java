@@ -51,6 +51,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onError(Task task, Exception error) {
             showError(error.getMessage());
+            refreshData();
         }
     };
 

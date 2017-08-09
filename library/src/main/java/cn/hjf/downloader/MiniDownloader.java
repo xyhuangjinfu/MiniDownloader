@@ -115,8 +115,10 @@ public final class MiniDownloader {
                     throw new IllegalArgumentException("task ,urlStr, filePath, listener, errorListener must not be null!");
                 }
                 /** Check task status. */
-                if (task.getStatus() != Task.Status.NEW && task.getStatus() != Task.Status.STOPPED) {
-                    throw new IllegalStateException("Task status not NEW or STOPPED!");
+                if (task.getStatus() != Task.Status.NEW
+                        && task.getStatus() != Task.Status.STOPPED
+                        && task.getStatus() != Task.Status.ERROR) {
+                    throw new IllegalStateException("Task status not NEW or STOPPED or ERROR!");
                 }
 
                 /** HTTP protocol. */
@@ -125,6 +127,14 @@ public final class MiniDownloader {
                     HttpWorker httpWorker = new HttpWorker(appContext, taskManager, task);
                     /** Mark running. */
                     taskManager.markWaiting(task, workExecutor.submit(httpWorker));
+                    return;
+                }
+                /** FTP protocol. */
+                if (task.getUrlStr().toUpperCase().startsWith("FTP")) {
+                    /** Create FtpWorker. */
+                    FtpWorker ftpWorker = new FtpWorker(appContext, taskManager, task);
+                    /** Mark running. */
+                    taskManager.markWaiting(task, workExecutor.submit(ftpWorker));
                     return;
                 }
             }
