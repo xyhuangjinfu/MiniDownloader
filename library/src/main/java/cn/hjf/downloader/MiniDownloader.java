@@ -130,8 +130,13 @@ public final class MiniDownloader {
         commandExecutor.submit(new Runnable() {
             @Override
             public void run() {
-                taskManager.markWaiting(task, workExecutor.submit(worker));
-                task.setStatus(Task.Status.WAITING);
+                try {
+                    taskManager.markWaiting(task, workExecutor.submit(worker));
+                    task.setStatus(Task.Status.WAITING);
+                    task.getListener().onWait(task);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
         });
     }

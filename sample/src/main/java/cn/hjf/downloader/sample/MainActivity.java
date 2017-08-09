@@ -124,7 +124,8 @@ public class MainActivity extends AppCompatActivity {
                         Environment.getExternalStorageDirectory().getAbsolutePath()
                                 + File.separator + "MiniDownloader" + File.separator + "sjms.pdf",
                         listener,
-                        errorListener)
+                        errorListener,
+                        Task.Priority.HIGH)
         );
         taskList.add(
                 new Task(

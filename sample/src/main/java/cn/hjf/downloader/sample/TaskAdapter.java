@@ -85,6 +85,7 @@ public class TaskAdapter extends BaseAdapter {
         }
 
         holder.statusTv.setText(task.getStatus().toString());
+        holder.priorityTv.setText(task.getPriority().toString());
 
         if (task.getStatus() == Task.Status.NEW) {
             holder.startBtn.setEnabled(true);
@@ -136,13 +137,14 @@ public class TaskAdapter extends BaseAdapter {
     }
 
     private static class ViewHolder {
-        TextView infoTv, statusTv;
+        TextView infoTv, statusTv, priorityTv;
         ProgressBar pb;
         Button startBtn, stopBtn, deleteBtn;
 
         public ViewHolder(View rootView) {
             infoTv = (TextView) rootView.findViewById(R.id.infoTv);
             statusTv = (TextView) rootView.findViewById(R.id.statusTv);
+            priorityTv = (TextView) rootView.findViewById(R.id.priorityTv);
             pb = (ProgressBar) rootView.findViewById(R.id.pb);
             startBtn = (Button) rootView.findViewById(R.id.start);
             stopBtn = (Button) rootView.findViewById(R.id.stop);
