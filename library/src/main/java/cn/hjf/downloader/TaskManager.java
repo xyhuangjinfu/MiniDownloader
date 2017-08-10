@@ -50,20 +50,27 @@ final class TaskManager {
     private Map<Task, Future<Task>> runningTaskFutureMap;
 
     /**
+     * Avoid from leak of TaskManager's monitor.
+     */
+    private Object lock = new Object();
+
+    /**
      * Init TaskManager.
      *
      * @param context
      */
-    public synchronized void init(Context context) {
-        this.context = context;
+    public void init(Context context) {
+        synchronized (lock) {
+            this.context = context;
 
-        taskSet = new HashSet<>();
-        runningTaskFutureMap = new HashMap<>();
+            taskSet = new HashSet<>();
+            runningTaskFutureMap = new HashMap<>();
 
-        /** Read all unfinished task. */
-        taskSet.addAll(FileUtil.readTasksFromDisk(context));
-        /** Clear cached task from disk. */
-        FileUtil.clearAllTasks(context);
+            /** Read all unfinished task. */
+            taskSet.addAll(FileUtil.readTasksFromDisk(context));
+            /** Clear cached task from disk. */
+            FileUtil.clearAllTasks(context);
+        }
     }
 
     /**
@@ -71,13 +78,15 @@ final class TaskManager {
      *
      * @param task
      */
-    public synchronized void markWaiting(Task task, Future<Task> future) {
-        /** Mark task status to RUNNING. */
-        task.setStatus(Task.Status.WAITING);
-        /** Register task. */
-        taskSet.add(task);
-        /** Register running task. */
-        runningTaskFutureMap.put(task, future);
+    public void markWaiting(Task task, Future<Task> future) {
+        synchronized (lock) {
+            /** Mark task status to RUNNING. */
+            task.setStatus(Task.Status.WAITING);
+            /** Register task. */
+            taskSet.add(task);
+            /** Register running task. */
+            runningTaskFutureMap.put(task, future);
+        }
     }
 
     /**
@@ -85,9 +94,11 @@ final class TaskManager {
      *
      * @param task
      */
-    public synchronized void markRunning(Task task) {
-        /** Mark task status to RUNNING. */
-        task.setStatus(Task.Status.RUNNING);
+    public void markRunning(Task task) {
+        synchronized (lock) {
+            /** Mark task status to RUNNING. */
+            task.setStatus(Task.Status.RUNNING);
+        }
     }
 
     /**
@@ -95,11 +106,13 @@ final class TaskManager {
      *
      * @param task
      */
-    public synchronized void markStopped(Task task) {
-        /** Mark task's status to STOPPED. */
-        task.setStatus(Task.Status.STOPPED);
-        /** Remove future of this task. */
-        runningTaskFutureMap.remove(task);
+    public void markStopped(Task task) {
+        synchronized (lock) {
+            /** Mark task's status to STOPPED. */
+            task.setStatus(Task.Status.STOPPED);
+            /** Remove future of this task. */
+            runningTaskFutureMap.remove(task);
+        }
     }
 
     /**
@@ -107,13 +120,15 @@ final class TaskManager {
      *
      * @param task
      */
-    public synchronized void markFinished(Task task) {
-        /** Mark task's status to FINISHED. */
-        task.setStatus(Task.Status.FINISHED);
-        /** Remove task. */
-        taskSet.remove(task);
-        /** Remove future of this task. */
-        runningTaskFutureMap.remove(task);
+    public void markFinished(Task task) {
+        synchronized (lock) {
+            /** Mark task's status to FINISHED. */
+            task.setStatus(Task.Status.FINISHED);
+            /** Remove task. */
+            taskSet.remove(task);
+            /** Remove future of this task. */
+            runningTaskFutureMap.remove(task);
+        }
     }
 
     /**
@@ -121,13 +136,15 @@ final class TaskManager {
      *
      * @param task
      */
-    public synchronized void markError(Task task) {
-        /** Mark task's status to FINISHED. */
-        task.setStatus(Task.Status.ERROR);
-        /** Remove task. */
-        taskSet.remove(task);
-        /** Remove future of this task. */
-        runningTaskFutureMap.remove(task);
+    public void markError(Task task) {
+        synchronized (lock) {
+            /** Mark task's status to FINISHED. */
+            task.setStatus(Task.Status.ERROR);
+            /** Remove task. */
+            taskSet.remove(task);
+            /** Remove future of this task. */
+            runningTaskFutureMap.remove(task);
+        }
     }
 
     /**
@@ -136,8 +153,10 @@ final class TaskManager {
      * @param task
      * @return
      */
-    public synchronized Future<Task> getFuture(Task task) {
-        return runningTaskFutureMap.get(task);
+    public Future<Task> getFuture(Task task) {
+        synchronized (lock) {
+            return runningTaskFutureMap.get(task);
+        }
     }
 
     /**
@@ -145,8 +164,10 @@ final class TaskManager {
      *
      * @return
      */
-    public synchronized Collection<Future<Task>> getAllFutures() {
-        return new ArrayList<>(runningTaskFutureMap.values());
+    public Collection<Future<Task>> getAllFutures() {
+        synchronized (lock) {
+            return new ArrayList<>(runningTaskFutureMap.values());
+        }
     }
 
     /**
@@ -154,26 +175,30 @@ final class TaskManager {
      *
      * @return
      */
-    public synchronized List<Task> getStoppedTask() {
-        List<Task> stoppedTask = new ArrayList<>();
-        for (Task task : taskSet) {
-            if (task.getStatus() == Task.Status.STOPPED) {
-                stoppedTask.add(task);
+    public List<Task> getStoppedTask() {
+        synchronized (lock) {
+            List<Task> stoppedTask = new ArrayList<>();
+            for (Task task : taskSet) {
+                if (task.getStatus() == Task.Status.STOPPED) {
+                    stoppedTask.add(task);
+                }
             }
+            return stoppedTask;
         }
-        return stoppedTask;
     }
 
     /**
      * Save all unfinished tasks to disk, on next start up, we can get those tasks and restart them.
      */
-    public synchronized void saveAllUnfinishedTasks() {
-        List<Task> unfinishedTask = new ArrayList<>();
-        for (Task task : taskSet) {
-            if (task.getStatus() != Task.Status.FINISHED) {
-                unfinishedTask.add(task);
+    public void saveAllUnfinishedTasks() {
+        synchronized (lock) {
+            List<Task> unfinishedTask = new ArrayList<>();
+            for (Task task : taskSet) {
+                if (task.getStatus() != Task.Status.FINISHED) {
+                    unfinishedTask.add(task);
+                }
             }
+            FileUtil.saveTaskList(context, unfinishedTask);
         }
-        FileUtil.saveTaskList(context, unfinishedTask);
     }
 }

@@ -22,6 +22,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
+ * Mark that target is thread safe.
  * Created by huangjinfu on 2017/8/8.
  */
 
