@@ -55,6 +55,11 @@ final class TaskManager {
     private Object lock = new Object();
 
     /**
+     * Notify events of tasks to main thread.
+     */
+    private MainThreadEventNotifier eventNotifier;
+
+    /**
      * Init TaskManager.
      *
      * @param context
@@ -65,6 +70,7 @@ final class TaskManager {
 
             taskSet = new HashSet<>();
             runningTaskFutureMap = new HashMap<>();
+            eventNotifier = new MainThreadEventNotifier();
 
             /** Read all unfinished task. */
             taskSet.addAll(FileUtil.readTasksFromDisk(context));
@@ -78,13 +84,15 @@ final class TaskManager {
      *
      * @param task
      */
-    public void markWaiting(Task task, Future<Task> future) {
+    public void handleWaiting(Task task, Future<Task> future) {
         synchronized (lock) {
-            /** Mark task status to RUNNING. */
+            /** Mark task status to WAITING. */
             task.setStatus(Task.Status.WAITING);
+            /** Notify status changed. */
+            eventNotifier.notifyWait(task);
             /** Register task. */
             taskSet.add(task);
-            /** Register running task. */
+            /** Register future of this task. */
             runningTaskFutureMap.put(task, future);
         }
     }
@@ -94,10 +102,24 @@ final class TaskManager {
      *
      * @param task
      */
-    public void markRunning(Task task) {
+    public void handleRunning(Task task) {
         synchronized (lock) {
             /** Mark task status to RUNNING. */
             task.setStatus(Task.Status.RUNNING);
+            /** Notify status changed. */
+            eventNotifier.notifyStart(task);
+        }
+    }
+
+    /**
+     * Mark the task's status to running.
+     *
+     * @param task
+     */
+    public void handleProgress(Task task, Progress progress) {
+        synchronized (lock) {
+            /** Notify status changed. */
+            eventNotifier.notifyProgress(task, progress);
         }
     }
 
@@ -106,10 +128,12 @@ final class TaskManager {
      *
      * @param task
      */
-    public void markStopped(Task task) {
+    public void handleStopped(Task task) {
         synchronized (lock) {
             /** Mark task's status to STOPPED. */
             task.setStatus(Task.Status.STOPPED);
+            /** Notify status changed. */
+            eventNotifier.notifyStop(task);
             /** Remove future of this task. */
             runningTaskFutureMap.remove(task);
         }
@@ -120,10 +144,32 @@ final class TaskManager {
      *
      * @param task
      */
-    public void markFinished(Task task) {
+    public void handleFinished(Task task) {
         synchronized (lock) {
             /** Mark task's status to FINISHED. */
             task.setStatus(Task.Status.FINISHED);
+            /** Notify status changed. */
+            eventNotifier.notifyFinish(task);
+            /** Remove task. */
+            taskSet.remove(task);
+            /** Remove future of this task. */
+            runningTaskFutureMap.remove(task);
+        }
+    }
+
+    /**
+     * Mark the task's status to finished
+     *
+     * @param task
+     */
+    public void handleDeleted(Task task) {
+        synchronized (lock) {
+            /** Refresh task status. */
+            task.setStatus(Task.Status.NEW);
+            task.setProgress(null);
+            task.setResource(null);
+            /** Notify task deleted. */
+            eventNotifier.notifyDelete(task);
             /** Remove task. */
             taskSet.remove(task);
             /** Remove future of this task. */
@@ -136,10 +182,17 @@ final class TaskManager {
      *
      * @param task
      */
-    public void markError(Task task) {
+    public void handleError(Task task, Exception error) {
         synchronized (lock) {
+            /** Clear progress and resource info. */
+            task.setResource(null);
+            task.setProgress(null);
+            /** Delete last download data if exist.*/
+            FileUtil.deleteFile(task.getFilePath());
             /** Mark task's status to FINISHED. */
             task.setStatus(Task.Status.ERROR);
+            /** Notify status changed. */
+            eventNotifier.notifyError(task, error);
             /** Remove task. */
             taskSet.remove(task);
             /** Remove future of this task. */

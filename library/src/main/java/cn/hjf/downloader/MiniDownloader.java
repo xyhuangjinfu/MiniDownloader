@@ -147,9 +147,7 @@ public final class MiniDownloader {
             @Override
             public void run() {
                 try {
-                    taskManager.markWaiting(task, workExecutor.submit(worker));
-                    task.setStatus(Task.Status.WAITING);
-                    task.getListener().onWait(task);
+                    taskManager.handleWaiting(task, workExecutor.submit(worker));
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -207,18 +205,13 @@ public final class MiniDownloader {
                         future.get();
                     } catch (Exception e) {
                         e.printStackTrace();
-                    } finally {
-                        FileUtil.deleteFile(task.getFilePath());
                     }
                 }
                 /** Not need wait to cancel. Try to delete downloaded data directly. */
                 FileUtil.deleteFile(task.getFilePath());
-                /** Refresh task status. */
-                task.setStatus(Task.Status.NEW);
-                task.setProgress(null);
-                task.setResource(null);
-                /** Notify task deleted. */
-                task.getListener().onDelete(task);
+
+                taskManager.handleDeleted(task);
+
             }
         });
     }
