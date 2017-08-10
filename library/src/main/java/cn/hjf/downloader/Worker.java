@@ -31,7 +31,9 @@ import java.io.RandomAccessFile;
 import java.util.concurrent.RunnableFuture;
 
 /**
- * Created by huangjinfu on 2017/8/7.
+ * Worker are used to execute download task for different protocols. Concrete subclass should handle concrete protocol.
+ *
+ * @author huangjinfu
  */
 
 abstract class Worker implements CustomFutureCallable<Task> {

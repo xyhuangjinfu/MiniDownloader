@@ -20,9 +20,16 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.RunnableFuture;
 
 /**
- * Created by huangjinfu on 2017/8/7.
+ * This interface indicate that it can create custom RunnableFuture instance instead of normal FutureTask.
+ *
+ * @author huangjinfu
  */
 
 interface CustomFutureCallable<T> extends Callable<T> {
+    /**
+     * Create a RunnableFuture instance for this Callable instance.
+     *
+     * @return
+     */
     RunnableFuture<T> newTaskFor();
 }
