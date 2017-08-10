@@ -143,6 +143,14 @@ public class MainActivity extends AppCompatActivity {
                         listener,
                         errorListener)
         );
+        taskList.add(
+                new Task(
+                        "ftp://hjf:666@192.168.1.64:21/hello.txt;type=i",
+                        Environment.getExternalStorageDirectory().getAbsolutePath()
+                                + File.separator + "MiniDownloader" + File.separator + "hello.txt",
+                        listener,
+                        errorListener)
+        );
 
         return taskList;
     }

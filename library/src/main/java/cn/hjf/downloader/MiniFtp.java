@@ -24,6 +24,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
+ * Because of URLConnection not support partial download for ftp protocol,
  * Created by huangjinfu on 2017/8/9.
  */
 
@@ -40,13 +41,13 @@ final class MiniFtp {
     private int dataPort;
     private InputStream dataIS;
 
-    private URL url;
     private String user;
     private String password;
     private String file;
+    private String type;
 
     public MiniFtp(String urlStr) throws Exception {
-        url = new URL(urlStr);
+        URL url = new URL(urlStr);
         String userInfo = url.getUserInfo();
         if (userInfo == null || "".equals(userInfo)) {
             throw new IllegalArgumentException("Unknown user info.");
@@ -57,6 +58,10 @@ final class MiniFtp {
         commandPort = url.getPort();
         host = url.getHost();
         file = url.getPath();
+        if (file.contains(";")) {
+            type = file.substring(file.lastIndexOf(";") + 1).replace("type=", "");
+            file = file.substring(0, file.lastIndexOf(";"));
+        }
     }
 
     public void connect() throws Exception {
@@ -118,6 +123,14 @@ final class MiniFtp {
     }
 
     public InputStream getInputStream() throws Exception {
+        /** Set transfer type */
+        if (type != null) {
+            writeCommand(("TYPE " + type + "\n").getBytes());
+            String resType = readCommand();
+            if (!resType.startsWith("200")) {
+                throw new Exception("Type set to " + type + " failed");
+            }
+        }
         /** Download file */
         writeCommand(("RETR " + file + "\n").getBytes());
         String resRetr = readCommand();
