@@ -16,10 +16,14 @@
 
 package cn.hjf.downloader;
 
+import android.support.annotation.NonNull;
+
 import java.io.Serializable;
 
 /**
- * Created by huangjinfu on 2017/8/7.
+ * Represent a download task, contains url, file path, priority, status, event listener, etc.
+ *
+ * @author huangjinfu
  */
 
 public class Task implements Serializable, Comparable<Task> {
@@ -78,16 +82,48 @@ public class Task implements Serializable, Comparable<Task> {
     private Progress progress;
     private Priority priority = Priority.NORMAL;
 
-    public Task(String urlStr, String filePath, Listener listener, ErrorListener errorListener) {
+    public Task(
+            @NonNull String urlStr,
+            @NonNull String filePath,
+            @NonNull Listener listener,
+            @NonNull ErrorListener errorListener) {
         this(urlStr, filePath, listener, errorListener, Priority.NORMAL);
     }
 
-    public Task(String urlStr, String filePath, Listener listener, ErrorListener errorListener, Priority priority) {
+    public Task(
+            @NonNull String urlStr,
+            @NonNull String filePath,
+            @NonNull Listener listener,
+            @NonNull ErrorListener errorListener,
+            @NonNull Priority priority) {
+        checkTask(urlStr, filePath, listener, errorListener, priority);
         this.urlStr = urlStr;
         this.filePath = filePath;
         this.listener = listener;
         this.errorListener = errorListener;
         this.priority = priority;
+    }
+
+    private void checkTask(String urlStr,
+                           String filePath,
+                           Listener listener,
+                           ErrorListener errorListener,
+                           Priority priority) {
+        if (urlStr == null) {
+            throw new IllegalArgumentException("urlStr must not be null");
+        }
+        if (filePath == null) {
+            throw new IllegalArgumentException("filePath must not be null");
+        }
+        if (listener == null) {
+            throw new IllegalArgumentException("listener must not be null");
+        }
+        if (errorListener == null) {
+            throw new IllegalArgumentException("errorListener must not be null");
+        }
+        if (priority == null) {
+            throw new IllegalArgumentException("priority must not be null");
+        }
     }
 
     public String getUrlStr() {
