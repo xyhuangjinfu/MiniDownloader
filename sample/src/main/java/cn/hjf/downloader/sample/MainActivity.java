@@ -10,7 +10,9 @@ import android.widget.Toast;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import cn.hjf.downloader.ErrorListener;
 import cn.hjf.downloader.Listener;
@@ -74,8 +76,7 @@ public class MainActivity extends AppCompatActivity {
         MiniDownloader.getInstance().setDebuggable(true);
 
         taskListView = (ListView) findViewById(R.id.taskLv);
-        taskList.addAll(unfinishedTasks());
-        taskList.addAll(createTask());
+        taskList.addAll(getTaskList());
 
         taskAdapter = new TaskAdapter(this, taskList);
 
@@ -99,7 +100,14 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private List<Task> createTask() {
+    private List<Task> getTaskList() {
+        Set<Task> taskSet = new HashSet<>();
+        taskSet.addAll(getUnfinishedTasks());
+        taskSet.addAll(createNewTask());
+        return new ArrayList<>(taskSet);
+    }
+
+    private List<Task> createNewTask() {
         List<Task> taskList = new ArrayList<>();
 
         taskList.add(
@@ -139,7 +147,7 @@ public class MainActivity extends AppCompatActivity {
         return taskList;
     }
 
-    private List<Task> unfinishedTasks() {
+    private List<Task> getUnfinishedTasks() {
         List<Task> taskList = new ArrayList<>();
         taskList.addAll(MiniDownloader.getInstance().getStoppedTaskList());
         for (int i = 0; i < taskList.size(); i++) {
