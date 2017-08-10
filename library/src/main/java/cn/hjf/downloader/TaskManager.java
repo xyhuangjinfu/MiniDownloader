@@ -28,7 +28,10 @@ import java.util.Set;
 import java.util.concurrent.Future;
 
 /**
- * Created by huangjinfu on 2017/8/7.
+ * Task manager need to manage tasks and their future, and handle some other things for task when task status be changed.
+ * Task Manager also manage task caches, write unfinished tasks to and read them from disk.
+ *
+ * @author huangjinfu
  */
 
 @ThreadSafe
@@ -80,9 +83,10 @@ final class TaskManager {
     }
 
     /**
-     * Mark the task's status to waiting, and hold the future to control task.
+     * Task status need change to WAITING.
      *
      * @param task
+     * @param future the future of this task.
      */
     public void handleWaiting(Task task, Future<Task> future) {
         synchronized (lock) {
@@ -98,7 +102,7 @@ final class TaskManager {
     }
 
     /**
-     * Mark the task's status to running.
+     * Task status need change to RUNNING.
      *
      * @param task
      */
@@ -112,7 +116,7 @@ final class TaskManager {
     }
 
     /**
-     * Mark the task's status to running.
+     * Task need to update progress.
      *
      * @param task
      */
@@ -124,7 +128,7 @@ final class TaskManager {
     }
 
     /**
-     * Mark the task's status to stopped.
+     * Task status need change to STOPPED.
      *
      * @param task
      */
@@ -140,7 +144,7 @@ final class TaskManager {
     }
 
     /**
-     * Mark the task's status to finished
+     * Task status need change to ERROR.
      *
      * @param task
      */
@@ -158,16 +162,19 @@ final class TaskManager {
     }
 
     /**
-     * Mark the task's status to finished
+     * Task status need change to DELETED, currently it's NEW, but we need do some extra work for this status.
      *
      * @param task
      */
     public void handleDeleted(Task task) {
         synchronized (lock) {
-            /** Refresh task status. */
-            task.setStatus(Task.Status.NEW);
+            /** Clear progress and resource info. */
             task.setProgress(null);
             task.setResource(null);
+            /** Delete last download data if exist.*/
+            FileUtil.deleteFile(task.getFilePath());
+            /** Refresh task status. */
+            task.setStatus(Task.Status.NEW);
             /** Notify task deleted. */
             eventNotifier.notifyDelete(task);
             /** Remove task. */
