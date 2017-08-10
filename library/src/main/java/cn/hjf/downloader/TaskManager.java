@@ -28,7 +28,10 @@ import java.util.Set;
 import java.util.concurrent.Future;
 
 /**
- * Created by huangjinfu on 2017/8/7.
+ * Task manager need to manage tasks and their future, and handle some other things for task when task status be changed.
+ * Task Manager also manage task caches, write unfinished tasks to and read them from disk.
+ *
+ * @author huangjinfu
  */
 
 @ThreadSafe
@@ -50,70 +53,135 @@ final class TaskManager {
     private Map<Task, Future<Task>> runningTaskFutureMap;
 
     /**
+     * Avoid from leak of TaskManager's monitor.
+     */
+    private Object lock = new Object();
+
+    /**
+     * Notify events of tasks to main thread.
+     */
+    private MainThreadEventNotifier eventNotifier;
+
+    /**
      * Init TaskManager.
      *
      * @param context
      */
-    public synchronized void init(Context context) {
-        this.context = context;
+    public void init(Context context) {
+        synchronized (lock) {
+            this.context = context;
 
-        taskSet = new HashSet<>();
-        runningTaskFutureMap = new HashMap<>();
+            taskSet = new HashSet<>();
+            runningTaskFutureMap = new HashMap<>();
+            eventNotifier = new MainThreadEventNotifier();
 
-        /** Read all unfinished task. */
-        taskSet.addAll(FileUtil.readTasksFromDisk(context));
-        /** Clear cached task from disk. */
-        FileUtil.clearAllTasks(context);
+            /** Read all unfinished task. */
+            taskSet.addAll(FileUtil.readTasksFromDisk(context));
+            /** Clear cached task from disk. */
+            FileUtil.clearAllTasks(context);
+        }
     }
 
     /**
-     * Mark the task's status to waiting, and hold the future to control task.
+     * Task status need change to WAITING.
      *
      * @param task
+     * @param future the future of this task.
      */
-    public synchronized void markWaiting(Task task, Future<Task> future) {
-        /** Mark task status to RUNNING. */
-        task.setStatus(Task.Status.WAITING);
-        /** Register task. */
-        taskSet.add(task);
-        /** Register running task. */
-        runningTaskFutureMap.put(task, future);
+    public void handleWaiting(Task task, Future<Task> future) {
+        synchronized (lock) {
+            /** Mark task status to WAITING. */
+            task.setStatus(Task.Status.WAITING);
+            /** Notify status changed. */
+            eventNotifier.notifyWait(task);
+            /** Register task. */
+            taskSet.add(task);
+            /** Register future of this task. */
+            runningTaskFutureMap.put(task, future);
+        }
     }
 
     /**
-     * Mark the task's status to running.
+     * Task status need change to RUNNING.
      *
      * @param task
      */
-    public synchronized void markRunning(Task task) {
-        /** Mark task status to RUNNING. */
-        task.setStatus(Task.Status.RUNNING);
+    public void handleRunning(Task task) {
+        synchronized (lock) {
+            /** Mark task status to RUNNING. */
+            task.setStatus(Task.Status.RUNNING);
+            /** Notify status changed. */
+            eventNotifier.notifyStart(task);
+        }
     }
 
     /**
-     * Mark the task's status to stopped.
+     * Task need to update progress.
      *
      * @param task
      */
-    public synchronized void markStopped(Task task) {
-        /** Mark task's status to STOPPED. */
-        task.setStatus(Task.Status.STOPPED);
-        /** Remove future of this task. */
-        runningTaskFutureMap.remove(task);
+    public void handleProgress(Task task, Progress progress) {
+        synchronized (lock) {
+            /** Notify status changed. */
+            eventNotifier.notifyProgress(task, progress);
+        }
     }
 
     /**
-     * Mark the task's status to finished
+     * Task status need change to STOPPED.
      *
      * @param task
      */
-    public synchronized void markFinished(Task task) {
-        /** Mark task's status to FINISHED. */
-        task.setStatus(Task.Status.FINISHED);
-        /** Remove task. */
-        taskSet.remove(task);
-        /** Remove future of this task. */
-        runningTaskFutureMap.remove(task);
+    public void handleStopped(Task task) {
+        synchronized (lock) {
+            /** Mark task's status to STOPPED. */
+            task.setStatus(Task.Status.STOPPED);
+            /** Notify status changed. */
+            eventNotifier.notifyStop(task);
+            /** Remove future of this task. */
+            runningTaskFutureMap.remove(task);
+        }
+    }
+
+    /**
+     * Task status need change to ERROR.
+     *
+     * @param task
+     */
+    public void handleFinished(Task task) {
+        synchronized (lock) {
+            /** Mark task's status to FINISHED. */
+            task.setStatus(Task.Status.FINISHED);
+            /** Notify status changed. */
+            eventNotifier.notifyFinish(task);
+            /** Remove task. */
+            taskSet.remove(task);
+            /** Remove future of this task. */
+            runningTaskFutureMap.remove(task);
+        }
+    }
+
+    /**
+     * Task status need change to DELETED, currently it's NEW, but we need do some extra work for this status.
+     *
+     * @param task
+     */
+    public void handleDeleted(Task task) {
+        synchronized (lock) {
+            /** Clear progress and resource info. */
+            task.setProgress(null);
+            task.setResource(null);
+            /** Delete last download data if exist.*/
+            FileUtil.deleteFile(task.getFilePath());
+            /** Refresh task status. */
+            task.setStatus(Task.Status.NEW);
+            /** Notify task deleted. */
+            eventNotifier.notifyDelete(task);
+            /** Remove task. */
+            taskSet.remove(task);
+            /** Remove future of this task. */
+            runningTaskFutureMap.remove(task);
+        }
     }
 
     /**
@@ -121,13 +189,22 @@ final class TaskManager {
      *
      * @param task
      */
-    public synchronized void markError(Task task) {
-        /** Mark task's status to FINISHED. */
-        task.setStatus(Task.Status.ERROR);
-        /** Remove task. */
-        taskSet.remove(task);
-        /** Remove future of this task. */
-        runningTaskFutureMap.remove(task);
+    public void handleError(Task task, Exception error) {
+        synchronized (lock) {
+            /** Clear progress and resource info. */
+            task.setResource(null);
+            task.setProgress(null);
+            /** Delete last download data if exist.*/
+            FileUtil.deleteFile(task.getFilePath());
+            /** Mark task's status to FINISHED. */
+            task.setStatus(Task.Status.ERROR);
+            /** Notify status changed. */
+            eventNotifier.notifyError(task, error);
+            /** Remove task. */
+            taskSet.remove(task);
+            /** Remove future of this task. */
+            runningTaskFutureMap.remove(task);
+        }
     }
 
     /**
@@ -136,8 +213,10 @@ final class TaskManager {
      * @param task
      * @return
      */
-    public synchronized Future<Task> getFuture(Task task) {
-        return runningTaskFutureMap.get(task);
+    public Future<Task> getFuture(Task task) {
+        synchronized (lock) {
+            return runningTaskFutureMap.get(task);
+        }
     }
 
     /**
@@ -145,8 +224,10 @@ final class TaskManager {
      *
      * @return
      */
-    public synchronized Collection<Future<Task>> getAllFutures() {
-        return new ArrayList<>(runningTaskFutureMap.values());
+    public Collection<Future<Task>> getAllFutures() {
+        synchronized (lock) {
+            return new ArrayList<>(runningTaskFutureMap.values());
+        }
     }
 
     /**
@@ -154,26 +235,30 @@ final class TaskManager {
      *
      * @return
      */
-    public synchronized List<Task> getStoppedTask() {
-        List<Task> stoppedTask = new ArrayList<>();
-        for (Task task : taskSet) {
-            if (task.getStatus() == Task.Status.STOPPED) {
-                stoppedTask.add(task);
+    public List<Task> getStoppedTask() {
+        synchronized (lock) {
+            List<Task> stoppedTask = new ArrayList<>();
+            for (Task task : taskSet) {
+                if (task.getStatus() == Task.Status.STOPPED) {
+                    stoppedTask.add(task);
+                }
             }
+            return stoppedTask;
         }
-        return stoppedTask;
     }
 
     /**
      * Save all unfinished tasks to disk, on next start up, we can get those tasks and restart them.
      */
-    public synchronized void saveAllUnfinishedTasks() {
-        List<Task> unfinishedTask = new ArrayList<>();
-        for (Task task : taskSet) {
-            if (task.getStatus() != Task.Status.FINISHED) {
-                unfinishedTask.add(task);
+    public void saveAllUnfinishedTasks() {
+        synchronized (lock) {
+            List<Task> unfinishedTask = new ArrayList<>();
+            for (Task task : taskSet) {
+                if (task.getStatus() != Task.Status.FINISHED) {
+                    unfinishedTask.add(task);
+                }
             }
+            FileUtil.saveTaskList(context, unfinishedTask);
         }
-        FileUtil.saveTaskList(context, unfinishedTask);
     }
 }

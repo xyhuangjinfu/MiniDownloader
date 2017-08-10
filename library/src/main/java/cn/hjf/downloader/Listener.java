@@ -16,14 +16,19 @@
 
 package cn.hjf.downloader;
 
+import android.support.annotation.MainThread;
+
 /**
- * Created by huangjinfu on 2017/8/7.
+ * This interface can notify all events for all tasks. Those methods will be called on main thread.
+ *
+ * @author huangjinfu
  */
 
+@MainThread
 public interface Listener {
 
     /**
-     * Notify that task be submitted to workers.
+     * Notify that task be submitted to workers, but be waiting in the task queue.
      *
      * @param task
      */

@@ -25,7 +25,8 @@ import java.util.regex.Pattern;
 
 /**
  * Because of URLConnection not support partial download for ftp protocol,
- * Created by huangjinfu on 2017/8/9.
+ *
+ * @author huangjinfu
  */
 
 final class MiniFtp {

@@ -19,7 +19,9 @@ package cn.hjf.downloader;
 import java.io.Serializable;
 
 /**
- * Created by huangjinfu on 2017/8/5.
+ * Present a remote resource that will be downloaded, Concrete subclass should store necessary info for different protocol.
+ *
+ * @author huangjinfu
  */
 
 abstract class Resource implements Serializable {

@@ -22,7 +22,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Created by huangjinfu on 2017/8/8.
+ * Mark that target is thread safe.
+ *
+ * @author huangjinfu
  */
 
 @Target({ElementType.TYPE, ElementType.FIELD, ElementType.METHOD})

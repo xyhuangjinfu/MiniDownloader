@@ -20,7 +20,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.FutureTask;
 
 /**
- * Created by huangjinfu on 2017/8/9.
+ * @author huangjinfu
  */
 
 final class MDFutureTask<T> extends FutureTask<T> implements Comparable<MDFutureTask> {

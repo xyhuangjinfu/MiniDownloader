@@ -26,7 +26,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 /**
- * Created by huangjinfu on 2017/8/7.
+ * @author huangjinfu
  */
 
 class HttpWorker extends Worker {

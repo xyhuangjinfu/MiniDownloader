@@ -16,10 +16,20 @@
 
 package cn.hjf.downloader;
 
-/**
- * Created by huangjinfu on 2017/8/7.
- */
+import android.support.annotation.MainThread;
 
+/**
+ * When task occurs error, this interface can notify this error. Those methods will be called on main thread.
+ *
+ * @author huangjinfu
+ */
+@MainThread
 public interface ErrorListener {
+    /**
+     * Notify that some error occurs.
+     *
+     * @param task
+     * @param error
+     */
     void onError(Task task, Exception error);
 }

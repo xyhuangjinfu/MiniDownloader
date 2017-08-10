@@ -17,7 +17,7 @@
 package cn.hjf.downloader;
 
 /**
- * Created by huangjinfu on 2017/8/7.
+ * @author huangjinfu
  */
 
 class Debug {

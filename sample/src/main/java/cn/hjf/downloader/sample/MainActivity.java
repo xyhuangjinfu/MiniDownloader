@@ -174,21 +174,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void refreshData() {
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
-                taskAdapter.notifyDataSetChanged();
-            }
-        });
+        taskAdapter.notifyDataSetChanged();
     }
 
     private void showError(final String msg) {
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
-                Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
-            }
-        });
+        Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
     }
 
     @Override

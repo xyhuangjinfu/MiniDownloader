@@ -31,7 +31,9 @@ import java.io.RandomAccessFile;
 import java.util.concurrent.RunnableFuture;
 
 /**
- * Created by huangjinfu on 2017/8/7.
+ * Worker are used to execute download task for different protocols. Concrete subclass should handle concrete protocol.
+ *
+ * @author huangjinfu
  */
 
 abstract class Worker implements CustomFutureCallable<Task> {
@@ -163,7 +165,7 @@ abstract class Worker implements CustomFutureCallable<Task> {
                 /** Notify and update progress */
                 progress.setDownloaded(downloadCount);
                 if (needNotify(progress.getTotal(), lastNotifiedCount, downloadCount)) {
-                    task.getListener().onProgress(task, progress);
+                    taskManager.handleProgress(task, progress);
                     lastNotifiedCount = downloadCount;
                 }
 
@@ -202,9 +204,7 @@ abstract class Worker implements CustomFutureCallable<Task> {
         /** Record start time. */
         startTime = SystemClock.elapsedRealtime();
         /** Mark task status to stopped. */
-        taskManager.markRunning(task);
-        /** Notify stop. */
-        task.getListener().onStart(task);
+        taskManager.handleRunning(task);
     }
 
     /**
@@ -212,9 +212,7 @@ abstract class Worker implements CustomFutureCallable<Task> {
      */
     private void handleStop() {
         /** Mark task status to stopped. */
-        taskManager.markStopped(task);
-        /** Notify stop. */
-        task.getListener().onStop(task);
+        taskManager.handleStopped(task);
         /** Log if necessary */
         if (Debug.debug)
             Log.e(TAG, "Task stopped, used time : " + (SystemClock.elapsedRealtime() - startTime) + " ms, task : " + task);
@@ -225,9 +223,7 @@ abstract class Worker implements CustomFutureCallable<Task> {
      */
     private void handleFinish() {
         /** Mark task status to finished. */
-        taskManager.markFinished(task);
-        /** Notify finish. */
-        task.getListener().onFinish(task);
+        taskManager.handleFinished(task);
         /** Log if necessary */
         if (Debug.debug)
             Log.e(TAG, "Task finished, used time : " + (SystemClock.elapsedRealtime() - startTime) + " ms, task : " + task);
@@ -237,15 +233,8 @@ abstract class Worker implements CustomFutureCallable<Task> {
      * Handle error of this work.
      */
     private void handleError(Exception error) {
-        /** Clear progress and resource info. */
-        task.setResource(null);
-        task.setProgress(null);
-        /** Delete last download data if exist.*/
-        FileUtil.deleteFile(task.getFilePath());
         /** Mark task status to finished. */
-        taskManager.markError(task);
-        /** Notify finish. */
-        task.getErrorListener().onError(task, error);
+        taskManager.handleError(task, error);
     }
 
     /**
