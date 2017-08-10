@@ -20,7 +20,8 @@ import java.io.Serializable;
 
 /**
  * A class to present download progress of a task.
- * Created by huangjinfu on 2017/8/7.
+ *
+ * @author huangjinfu
  */
 
 public class Progress implements Serializable {

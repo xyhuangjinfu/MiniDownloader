@@ -22,7 +22,7 @@ import android.support.annotation.NonNull;
 import java.io.InputStream;
 
 /**
- * Created by huangjinfu on 2017/8/7.
+ * @author huangjinfu
  */
 
 class FtpWorker extends Worker {

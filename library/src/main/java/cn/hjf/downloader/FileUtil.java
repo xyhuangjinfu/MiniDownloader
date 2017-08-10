@@ -32,7 +32,7 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * Created by huangjinfu on 2017/8/5.
+ * @author huangjinfu
  */
 
 class FileUtil {

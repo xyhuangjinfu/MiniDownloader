@@ -31,7 +31,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Created by huangjinfu on 2017/8/7.
+ * @author huangjinfu
  */
 
 public final class MiniDownloader {

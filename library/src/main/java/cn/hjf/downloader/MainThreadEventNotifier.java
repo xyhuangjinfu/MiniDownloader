@@ -21,7 +21,7 @@ import android.os.Looper;
 import android.support.annotation.NonNull;
 
 /**
- * Created by huangjinfu on 2017/8/10.
+ * @author huangjinfu
  */
 
 final class MainThreadEventNotifier {
