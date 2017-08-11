@@ -20,7 +20,7 @@ package cn.hjf.downloader;
  * @author huangjinfu
  */
 
-class Debug {
+final class Debug {
     static String appLogPrefix = "MD-";
     static boolean debug;
 }

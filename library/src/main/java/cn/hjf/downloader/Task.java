@@ -26,7 +26,7 @@ import java.io.Serializable;
  * @author huangjinfu
  */
 
-public class Task implements Serializable, Comparable<Task> {
+public final class Task implements Serializable, Comparable<Task> {
 
     private static final long serialVersionUID = 1L;
 

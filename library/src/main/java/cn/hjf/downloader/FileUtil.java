@@ -35,7 +35,7 @@ import java.util.List;
  * @author huangjinfu
  */
 
-class FileUtil {
+final class FileUtil {
 
     private static final String TAG = Debug.appLogPrefix + "FileUtil";
 
