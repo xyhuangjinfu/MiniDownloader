@@ -90,10 +90,13 @@ final class TaskManager {
      */
     public void handleWaiting(Task task, Future<Task> future) {
         synchronized (lock) {
-            /** Mark task status to WAITING. */
-            task.setStatus(Task.Status.WAITING);
-            /** Notify status changed. */
-            eventNotifier.notifyWait(task);
+            /** Worker thread may already set status to RUNNING, skip it.*/
+            if (task.getStatus() != Task.Status.RUNNING) {
+                /** Mark task status to WAITING. */
+                task.setStatus(Task.Status.WAITING);
+                /** Notify status changed. */
+                eventNotifier.notifyWait(task);
+            }
             /** Register task. */
             taskSet.add(task);
             /** Register future of this task. */

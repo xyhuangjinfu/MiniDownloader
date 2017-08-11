@@ -24,7 +24,7 @@ import java.io.Serializable;
  * @author huangjinfu
  */
 
-public class Progress implements Serializable {
+public final class Progress implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
