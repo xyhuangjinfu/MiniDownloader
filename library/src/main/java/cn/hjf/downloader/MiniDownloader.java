@@ -17,10 +17,10 @@
 package cn.hjf.downloader;
 
 import android.content.Context;
+import android.support.annotation.MainThread;
 import android.support.annotation.NonNull;
 
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -44,10 +44,6 @@ public final class MiniDownloader {
      * Executor to execute Workers.
      */
     private ExecutorService workExecutor;
-    /**
-     * The map that Task to future of this task.
-     */
-    private Map<Task, Future<Task>> taskFutureMap;
     /**
      * TaskManager to manage all task status.
      */
@@ -96,6 +92,7 @@ public final class MiniDownloader {
      * Quit downloader. All unfinished tasks will be stored to disk, you can get them on next start up by call {@link #getStoppedTaskList()}.
      */
     public void quit() {
+        /** Close all workers and wait to save unfinished task to disk. */
         commandExecutor.submit(new Runnable() {
             @Override
             public void run() {
@@ -115,6 +112,8 @@ public final class MiniDownloader {
                 taskManager.saveAllUnfinishedTasks();
             }
         });
+        /** Close command executor. */
+        commandExecutor.shutdown();
     }
 
     /**
@@ -124,25 +123,23 @@ public final class MiniDownloader {
      */
     public void start(@NonNull final Task task) {
         /** Check task and fields. */
-        if (!checkTask(task)) {
-            throw new IllegalArgumentException("task ,urlStr, filePath, listener, errorListener must not be null!");
-        }
+        checkTask(task);
         /** Check task status. */
         if (task.getStatus() != Task.Status.NEW
                 && task.getStatus() != Task.Status.STOPPED
                 && task.getStatus() != Task.Status.ERROR) {
             throw new IllegalStateException("Task status not NEW or STOPPED or ERROR!");
         }
-
+        /** Create worker for different protocol. */
         final Worker worker;
         if (task.getUrlStr().toUpperCase().startsWith("HTTP")) {
             worker = new HttpWorker(appContext, taskManager, task);
         } else if (task.getUrlStr().toUpperCase().startsWith("FTP")) {
             worker = new FtpWorker(appContext, taskManager, task);
         } else {
-            throw new IllegalArgumentException("Unsupported protocol.");
+            throw new IllegalArgumentException("Unsupported protocol, url:" + task.getUrlStr());
         }
-
+        /** Submit worker. */
         commandExecutor.submit(new Runnable() {
             @Override
             public void run() {
@@ -161,14 +158,14 @@ public final class MiniDownloader {
      * @param task
      */
     public void stop(@NonNull final Task task) {
-        if (!checkTask(task)) {
-            throw new IllegalArgumentException("task ,urlStr, filePath, listener, errorListener must not be null!");
-        }
-
-        if (task.getStatus() != Task.Status.WAITING && task.getStatus() != Task.Status.RUNNING) {
+        /** Check task and fields. */
+        checkTask(task);
+        /** Check task status. */
+        if (task.getStatus() != Task.Status.WAITING
+                && task.getStatus() != Task.Status.RUNNING) {
             throw new IllegalStateException("Task status not WAITING or RUNNING!");
         }
-
+        /** Submit cancel command. */
         commandExecutor.submit(new Runnable() {
             @Override
             public void run() {
@@ -190,9 +187,9 @@ public final class MiniDownloader {
      * @param task
      */
     public void delete(@NonNull final Task task) {
-        if (!checkTask(task)) {
-            throw new IllegalArgumentException("task ,urlStr, filePath, listener, errorListener must not be null!");
-        }
+        /** Check task and fields. */
+        checkTask(task);
+        /** Submit delete command. */
         commandExecutor.submit(new Runnable() {
             @Override
             public void run() {
@@ -204,12 +201,11 @@ public final class MiniDownloader {
                     try {
                         future.get();
                     } catch (Exception e) {
-                        e.printStackTrace();
                     }
                 }
                 /** Not need wait to cancel. Try to delete downloaded data directly. */
                 FileUtil.deleteFile(task.getFilePath());
-
+                /** handle some other things. */
                 taskManager.handleDeleted(task);
 
             }
@@ -240,14 +236,14 @@ public final class MiniDownloader {
      * @param task
      * @return
      */
-    private boolean checkTask(@NonNull Task task) {
+    @MainThread
+    private void checkTask(@NonNull Task task) {
         if (task == null
                 || task.getUrlStr() == null
                 || task.getFilePath() == null
                 || task.getListener() == null
                 || task.getErrorListener() == null) {
-            return false;
+            throw new IllegalArgumentException("task ,urlStr, filePath, listener, errorListener must not be null!");
         }
-        return true;
     }
 }
