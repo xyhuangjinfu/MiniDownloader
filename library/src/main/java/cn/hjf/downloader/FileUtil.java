@@ -79,7 +79,7 @@ final class FileUtil {
     }
 
     public static boolean saveTask(Context context, @NonNull Task task) {
-        File file = new File(getRootDir(context), urlToFileName(task.getUrlStr()));
+        File file = new File(getRootDir(context), urlToFileName(task));
 
         if (!createParentDirs(file.getAbsolutePath())) {
             return false;
@@ -106,7 +106,7 @@ final class FileUtil {
     }
 
     public static boolean deleteTask(Context context, @NonNull Task task) {
-        File file = new File(getRootDir(context), urlToFileName(task.getUrlStr()));
+        File file = new File(getRootDir(context), urlToFileName(task));
         if (file.exists()) {
             return file.delete();
         }
@@ -143,8 +143,8 @@ final class FileUtil {
      * ******************************************************************************************
      */
 
-    private static String urlToFileName(String urlStr) {
-        return String.valueOf(urlStr.hashCode());
+    private static String urlToFileName(Task task) {
+        return String.valueOf(task.getUrlStr().hashCode()) + String.valueOf(task.getFilePath().hashCode());
     }
 
     private static String getRootDir(Context context) {
