@@ -52,6 +52,10 @@ public final class MiniDownloader {
      * Executor to execute command, prohibit to block UI thread.
      */
     private ExecutorService commandExecutor;
+    /**
+     * Update progress and network speed info.
+     */
+    private ProgressUpdater progressUpdater;
 
     private static class InstanceHolder {
         static MiniDownloader instance = new MiniDownloader();
@@ -86,6 +90,9 @@ public final class MiniDownloader {
         /** Create and initial task manager. */
         taskManager = new TaskManager();
         taskManager.init(context);
+        /** Create and start ProgressUpdater. */
+        progressUpdater = new ProgressUpdater();
+        progressUpdater.start();
     }
 
     /**
@@ -114,6 +121,8 @@ public final class MiniDownloader {
         });
         /** Close command executor. */
         commandExecutor.shutdown();
+        /** Close progressUpdater. */
+        progressUpdater.close();
     }
 
     /**
@@ -133,9 +142,9 @@ public final class MiniDownloader {
         /** Create worker for different protocol. */
         final Worker worker;
         if (task.getUrlStr().toUpperCase().startsWith("HTTP")) {
-            worker = new HttpWorker(appContext, taskManager, task);
+            worker = new HttpWorker(appContext, taskManager, task, progressUpdater);
         } else if (task.getUrlStr().toUpperCase().startsWith("FTP")) {
-            worker = new FtpWorker(appContext, taskManager, task);
+            worker = new FtpWorker(appContext, taskManager, task, progressUpdater);
         } else {
             throw new IllegalArgumentException("Unsupported protocol, url:" + task.getUrlStr());
         }

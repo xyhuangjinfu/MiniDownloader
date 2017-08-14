@@ -79,9 +79,15 @@ public class TaskAdapter extends BaseAdapter {
         if (progress != null) {
             holder.pb.setMax(100);
             holder.pb.setProgress((int) (progress.getDownloaded() * 100.0 / progress.getTotal()));
+            if (task.getStatus() == Task.Status.RUNNING) {
+                holder.speedTv.setText(progress.getNetworkSpeed() + "kb/s");
+            } else {
+                holder.speedTv.setText("0kb/s");
+            }
         } else {
             holder.pb.setMax(0);
             holder.pb.setProgress(0);
+            holder.speedTv.setText("0kb/s");
         }
 
         holder.statusTv.setText(task.getStatus().toString());
@@ -137,7 +143,7 @@ public class TaskAdapter extends BaseAdapter {
     }
 
     private static class ViewHolder {
-        TextView infoTv, statusTv, priorityTv;
+        TextView infoTv, statusTv, priorityTv, speedTv;
         ProgressBar pb;
         Button startBtn, stopBtn, deleteBtn;
 
@@ -145,6 +151,7 @@ public class TaskAdapter extends BaseAdapter {
             infoTv = (TextView) rootView.findViewById(R.id.infoTv);
             statusTv = (TextView) rootView.findViewById(R.id.statusTv);
             priorityTv = (TextView) rootView.findViewById(R.id.priorityTv);
+            speedTv = (TextView) rootView.findViewById(R.id.speedTv);
             pb = (ProgressBar) rootView.findViewById(R.id.pb);
             startBtn = (Button) rootView.findViewById(R.id.start);
             stopBtn = (Button) rootView.findViewById(R.id.stop);

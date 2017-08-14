@@ -28,25 +28,68 @@ public final class Progress implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
+    /**
+     * Total size of resource, based on the byte unit.
+     */
     private final long total;
+    /**
+     * Already downloaded size.
+     */
     private volatile long downloaded;
+    /**
+     * Current estimate network speed, based on the kb/s unit.
+     */
+    private transient volatile double networkSpeed;
 
+    /**
+     * Create new Progress instance.
+     *
+     * @param total Total size of this progress, total size can't be changed since Progress instance be constructed.
+     */
     public Progress(long total) {
         this.total = total;
     }
 
+    /**
+     * Get total size of this task.
+     *
+     * @return
+     */
     public long getTotal() {
         return total;
     }
 
+    /**
+     * Get already downloaded size of this task.
+     *
+     * @return
+     */
     public long getDownloaded() {
         return downloaded;
+    }
+
+    /**
+     * Get estimate temporary network speed.
+     *
+     * @return
+     */
+    public double getNetworkSpeed() {
+        return networkSpeed;
     }
 
     void setDownloaded(long downloaded) {
         this.downloaded = downloaded;
     }
 
+    void setNetworkSpeed(double networkSpeed) {
+        this.networkSpeed = networkSpeed;
+    }
+
+    /**
+     * Indicate that this Progress is finished.
+     *
+     * @return true if progress finished.
+     */
     boolean finished() {
         return total == downloaded;
     }

@@ -35,8 +35,12 @@ class HttpWorker extends Worker {
     private HttpResource httpResource;
     private HttpURLConnection httpURLConnection;
 
-    public HttpWorker(@NonNull Context context, @NonNull TaskManager taskManager, @NonNull Task task) {
-        super(context, taskManager, task);
+    public HttpWorker(
+            @NonNull Context context,
+            @NonNull TaskManager taskManager,
+            @NonNull Task task,
+            @NonNull ProgressUpdater progressUpdater) {
+        super(context, taskManager, task, progressUpdater);
         this.httpResource = (HttpResource) task.getResource();
     }
 

@@ -144,10 +144,7 @@ final class FileUtil {
      */
 
     private static String urlToFileName(String urlStr) {
-        int firstHalfLength = urlStr.length() / 2;
-        String fileName = String.valueOf(Math.abs(urlStr.substring(0, firstHalfLength).hashCode()));
-        fileName += String.valueOf(Math.abs(urlStr.substring(firstHalfLength).hashCode()));
-        return fileName;
+        return String.valueOf(urlStr.hashCode());
     }
 
     private static String getRootDir(Context context) {

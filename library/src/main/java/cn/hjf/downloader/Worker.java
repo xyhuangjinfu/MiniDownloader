@@ -22,7 +22,6 @@ import android.os.SystemClock;
 import android.support.annotation.CallSuper;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.util.Log;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
@@ -36,7 +35,7 @@ import java.util.concurrent.RunnableFuture;
  * @author huangjinfu
  */
 
-abstract class Worker implements CustomFutureCallable<Task> {
+abstract class Worker implements CustomFutureCallable<Task>, ProgressUpdater.Target {
 
     private static final String TAG = Debug.appLogPrefix + "Worker";
 
@@ -68,17 +67,47 @@ abstract class Worker implements CustomFutureCallable<Task> {
      */
     private byte[] buffer = new byte[1024 * 1024];
     /**
-     * Worker start time, for log use only.
+     * Provide progress update service.
      */
-    private long startTime;
+    private ProgressUpdater progressUpdater;
+    /**
+     * Download count since last progress update.
+     */
+    private volatile long lastUpdatedDownloadedCount = 0;
+    /**
+     * Time of last progress update.
+     */
+    private volatile long lastUpdatedTime;
 
     public Worker(
             @NonNull Context context,
             @NonNull TaskManager taskManager,
-            @NonNull Task task) {
+            @NonNull Task task,
+            @NonNull ProgressUpdater progressUpdater) {
+        checkParams(context, taskManager, task, progressUpdater);
         this.context = context;
         this.taskManager = taskManager;
         this.task = task;
+        this.progressUpdater = progressUpdater;
+    }
+
+    private void checkParams(
+            @NonNull Context context,
+            @NonNull TaskManager taskManager,
+            @NonNull Task task,
+            @NonNull ProgressUpdater progressUpdater) {
+        if (context == null) {
+            throw new IllegalArgumentException("Context must not be null");
+        }
+        if (taskManager == null) {
+            throw new IllegalArgumentException("TaskManager must not be null");
+        }
+        if (task == null) {
+            throw new IllegalArgumentException("Task must not be null");
+        }
+        if (progressUpdater == null) {
+            throw new IllegalArgumentException("ProgressUpdater must not be null");
+        }
     }
 
     @CallSuper
@@ -98,24 +127,29 @@ abstract class Worker implements CustomFutureCallable<Task> {
 
             /** Start, change status and notify event. */
             handleStart();
-
             /** Create and initial network connect. */
             initNetworkConnect();
             /** Create new progress for task if it's a new task.*/
             setProgressIfNecessary();
+            /** Start progress and network speed updater. */
+            startProgressUpdater();
             /** Download */
             readAndWrite(getInputStream());
 
             /** Calculate whether finished or stopped. */
-            if (task.getProgress().finished()) {
+            if (taskFinished()) {
                 handleFinish();
             } else {
                 handleStop();
             }
+
         } catch (Exception e) {
             e.printStackTrace();
             handleError(e);
         } finally {
+            /** Stop progress and network speed updater. */
+            stopProgressUpdater();
+            /** Close network connection. */
             closeNetworkConnect();
         }
 
@@ -124,16 +158,86 @@ abstract class Worker implements CustomFutureCallable<Task> {
 
     @Override
     public RunnableFuture<Task> newTaskFor() {
-        return new MDFutureTask<Task>(this, this);
+        return new MDFutureTask<>(this, this);
     }
 
+    /**
+     * ********************************************************************************************************************************************
+     * ********************************************************************************************************************************************
+     */
+
+    /**
+     * Handle start of this work.
+     */
+    private void handleStart() {
+        /** Mark task status to stopped. */
+        taskManager.handleRunning(task);
+    }
+
+    /**
+     * Handle stop of this work.
+     */
+    private void handleStop() {
+        /** Mark task status to stopped. */
+        taskManager.handleStopped(task);
+    }
+
+    /**
+     * Handle finish of this work.
+     */
+    private void handleFinish() {
+        /** Mark task status to finished. */
+        taskManager.handleFinished(task);
+    }
+
+    /**
+     * Handle error of this work.
+     */
+    private void handleError(Exception error) {
+        /** Mark task status to finished. */
+        taskManager.handleError(task, error);
+    }
+
+    /**
+     * Initial network connect for concrete protocol.
+     *
+     * @throws Exception network exception occurs.
+     */
     protected abstract void initNetworkConnect() throws Exception;
 
+    /**
+     * Continue start a stopped task, set partial download parameters for concrete protocol.
+     *
+     * @throws Exception set progress parameter fail.
+     */
     protected abstract void setProgressIfNecessary() throws Exception;
 
+    /**
+     * Get download InputStream of concrete protocol.
+     *
+     * @return
+     * @throws Exception Some error occurred.
+     */
     protected abstract InputStream getInputStream() throws Exception;
 
+    /**
+     * Close network connection of concrete protocol, ignore exceptions.
+     */
     protected abstract void closeNetworkConnect();
+
+    /**
+     * Start fixed rate progress update service.
+     */
+    private void stopProgressUpdater() {
+        progressUpdater.stopUpdateService(this);
+    }
+
+    /**
+     * Stop fixed rate progress update service.
+     */
+    private void startProgressUpdater() {
+        progressUpdater.startUpdateService(this);
+    }
 
     /**
      * Read from network and write to disk.
@@ -141,33 +245,34 @@ abstract class Worker implements CustomFutureCallable<Task> {
      * @return Total download count for this task.
      */
     @Nullable
-    protected Long readAndWrite(InputStream networkInputStream) {
+    private void readAndWrite(InputStream networkInputStream) {
         RandomAccessFile randomAccessFile = null;
         BufferedInputStream bis = null;
         long downloadCount = 0;
-        long lastNotifiedCount = 0;
-        try {
-            bis = new BufferedInputStream(networkInputStream);
 
+        try {
+            /** Init I/O stream */
+            bis = new BufferedInputStream(networkInputStream);
             randomAccessFile = new RandomAccessFile(task.getFilePath(), "rw");
+
+            /** Seek to last progress. */
             Progress progress = task.getProgress();
             if (progress != null) {
                 downloadCount = progress.getDownloaded();
-                lastNotifiedCount = downloadCount;
+                lastUpdatedDownloadedCount = downloadCount;
                 randomAccessFile.seek(progress.getDownloaded());
             }
+            /** Init lastUpdatedTime. */
+            lastUpdatedTime = SystemClock.uptimeMillis();
 
+            /** Read from network and write to disk. */
             int readCount;
             while ((readCount = bis.read(buffer)) != -1) {
                 randomAccessFile.write(buffer, 0, readCount);
                 downloadCount += readCount;
 
-                /** Notify and update progress */
-                progress.setDownloaded(downloadCount);
-                if (needNotify(progress.getTotal(), lastNotifiedCount, downloadCount)) {
-                    taskManager.handleProgress(task, progress);
-                    lastNotifiedCount = downloadCount;
-                }
+                /** Save real time downloaded progress */
+                task.getProgress().setDownloaded(downloadCount);
 
                 /** Time to quit. */
                 if (quit) {
@@ -188,65 +293,15 @@ abstract class Worker implements CustomFutureCallable<Task> {
                 e.printStackTrace();
             }
         }
-
-        return downloadCount;
     }
 
     /**
-     * ********************************************************************************************************************************************
-     * ********************************************************************************************************************************************
-     */
-
-    /**
-     * Handle start of this work.
-     */
-    private void handleStart() {
-        /** Record start time. */
-        startTime = SystemClock.elapsedRealtime();
-        /** Mark task status to stopped. */
-        taskManager.handleRunning(task);
-    }
-
-    /**
-     * Handle stop of this work.
-     */
-    private void handleStop() {
-        /** Mark task status to stopped. */
-        taskManager.handleStopped(task);
-        /** Log if necessary */
-        if (Debug.debug)
-            Log.e(TAG, "Task stopped, used time : " + (SystemClock.elapsedRealtime() - startTime) + " ms, task : " + task);
-    }
-
-    /**
-     * Handle finish of this work.
-     */
-    private void handleFinish() {
-        /** Mark task status to finished. */
-        taskManager.handleFinished(task);
-        /** Log if necessary */
-        if (Debug.debug)
-            Log.e(TAG, "Task finished, used time : " + (SystemClock.elapsedRealtime() - startTime) + " ms, task : " + task);
-    }
-
-    /**
-     * Handle error of this work.
-     */
-    private void handleError(Exception error) {
-        /** Mark task status to finished. */
-        taskManager.handleError(task, error);
-    }
-
-    /**
-     * Control the progress update speed, notify on high speed will increase the burden of UI thread.
+     * Calculate this task whether finished.
      *
-     * @param total
-     * @param lastNotifiedCount
-     * @param downloadCount
-     * @return
+     * @return true if task already finished.
      */
-    private boolean needNotify(long total, long lastNotifiedCount, long downloadCount) {
-        return (downloadCount - lastNotifiedCount) >= total / 100;
+    private boolean taskFinished() {
+        return task.getProgress().finished();
     }
 
     /**
@@ -254,10 +309,41 @@ abstract class Worker implements CustomFutureCallable<Task> {
      * ********************************************************************************************************************************************
      */
 
+    @Override
+    public void updateProgress() {
+        Progress progress = task.getProgress();
+        /** Snapshot of progress status. */
+        long time = SystemClock.uptimeMillis();
+        long downloaded = progress.getDownloaded();
+        /** Calculate network speed. */
+        double speed = (downloaded - lastUpdatedDownloadedCount) * 1.0 / (time - lastUpdatedTime);
+        progress.setNetworkSpeed(NumberUtil.scale(speed, 2));
+        /** Update marker. */
+        lastUpdatedTime = time;
+        lastUpdatedDownloadedCount = downloaded;
+        /** Update progress info. */
+        taskManager.handleProgress(task, task.getProgress());
+    }
+
+    /**
+     * ********************************************************************************************************************************************
+     * ********************************************************************************************************************************************
+     */
+
+    /**
+     * Indicate this task is really be executed by executor, Only used for cancel operation now.
+     *
+     * @return true if this task is really be executed by executor.
+     */
     boolean isExecuted() {
         return executed;
     }
 
+    /**
+     * Set quit flag.
+     *
+     * @param quit if true, indicate that this task should stop download.
+     */
     void setQuit(boolean quit) {
         this.quit = quit;
     }
@@ -265,5 +351,28 @@ abstract class Worker implements CustomFutureCallable<Task> {
     @NonNull
     Task getTask() {
         return task;
+    }
+
+    /**
+     * ********************************************************************************************************************************************
+     * ********************************************************************************************************************************************
+     */
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) {
+            return true;
+        }
+        if (!(obj instanceof Worker)) {
+            return false;
+        }
+
+        Worker w = (Worker) obj;
+        return w.task.equals(this.task);
+    }
+
+    @Override
+    public int hashCode() {
+        return task.hashCode();
     }
 }

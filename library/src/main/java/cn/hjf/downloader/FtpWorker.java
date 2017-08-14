@@ -29,8 +29,12 @@ class FtpWorker extends Worker {
 
     private MiniFtp miniFtp;
 
-    public FtpWorker(@NonNull Context context, @NonNull TaskManager taskManager, @NonNull Task task) {
-        super(context, taskManager, task);
+    public FtpWorker(
+            @NonNull Context context,
+            @NonNull TaskManager taskManager,
+            @NonNull Task task,
+            @NonNull ProgressUpdater progressUpdater) {
+        super(context, taskManager, task, progressUpdater);
     }
 
     @Override
