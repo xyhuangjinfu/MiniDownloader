@@ -19,7 +19,6 @@ package cn.hjf.downloader;
 import android.content.Context;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.util.Log;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -79,7 +78,7 @@ final class FileUtil {
     }
 
     public static boolean saveTask(Context context, @NonNull Task task) {
-        File file = new File(getRootDir(context), urlToFileName(task.getUrlStr()));
+        File file = new File(getRootDir(context), urlToFileName(task));
 
         if (!createParentDirs(file.getAbsolutePath())) {
             return false;
@@ -106,7 +105,7 @@ final class FileUtil {
     }
 
     public static boolean deleteTask(Context context, @NonNull Task task) {
-        File file = new File(getRootDir(context), urlToFileName(task.getUrlStr()));
+        File file = new File(getRootDir(context), urlToFileName(task));
         if (file.exists()) {
             return file.delete();
         }
@@ -119,10 +118,6 @@ final class FileUtil {
      */
 
     public static boolean createParentDirs(String path) {
-        if (Debug.debug) {
-            Log.e(TAG, "createParentDirs : " + path);
-        }
-
         File file = new File(path);
         if (!file.getParentFile().exists()) {
             return file.getParentFile().mkdirs();
@@ -143,8 +138,8 @@ final class FileUtil {
      * ******************************************************************************************
      */
 
-    private static String urlToFileName(String urlStr) {
-        return String.valueOf(urlStr.hashCode());
+    private static String urlToFileName(Task task) {
+        return String.valueOf(task.getUrlStr().hashCode()) + String.valueOf(task.getFilePath().hashCode());
     }
 
     private static String getRootDir(Context context) {
