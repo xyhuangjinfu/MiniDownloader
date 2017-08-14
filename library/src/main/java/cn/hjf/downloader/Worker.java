@@ -316,7 +316,7 @@ abstract class Worker implements CustomFutureCallable<Task>, ProgressUpdater.Tar
         long time = SystemClock.uptimeMillis();
         long downloaded = progress.getDownloaded();
         /** Calculate network speed. */
-        double speed = (downloaded - lastUpdatedDownloadedCount) * 1.0 / (time - lastUpdatedTime);
+        double speed = (downloaded - lastUpdatedDownloadedCount) / (time - lastUpdatedTime) / 1.024;
         progress.setNetworkSpeed(NumberUtil.scale(speed, 2));
         /** Update marker. */
         lastUpdatedTime = time;
