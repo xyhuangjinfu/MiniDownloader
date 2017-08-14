@@ -17,6 +17,7 @@
 package cn.hjf.downloader;
 
 import android.content.Context;
+import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -36,6 +37,8 @@ import java.util.concurrent.Future;
 
 @ThreadSafe
 final class TaskManager {
+
+    private static final String TAG = Debug.appLogPrefix + "TaskManager";
 
     /**
      * Application context.
@@ -262,6 +265,10 @@ final class TaskManager {
                 }
             }
             FileUtil.saveTaskList(context, unfinishedTask);
+
+            if (Debug.debug) {
+                Log.e(TAG, "saveAllUnfinishedTasks : " + unfinishedTask);
+            }
         }
     }
 }
