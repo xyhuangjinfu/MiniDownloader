@@ -148,6 +148,10 @@ final class TaskManager {
      */
     public void handleStopped(Task task) {
         synchronized (lock) {
+            /** Clear temporary network speed. */
+            if (task.getProgress() != null) {
+                task.getProgress().setNetworkSpeed(0);
+            }
             /** Mark task's status to STOPPED. */
             task.setStatus(Task.Status.STOPPED);
             /** Notify status changed. */
@@ -168,6 +172,10 @@ final class TaskManager {
      */
     public void handleFinished(Task task) {
         synchronized (lock) {
+            /** Clear temporary network speed. */
+            if (task.getProgress() != null) {
+                task.getProgress().setNetworkSpeed(0);
+            }
             /** Mark task's status to FINISHED. */
             task.setStatus(Task.Status.FINISHED);
             /** Notify status changed. */
