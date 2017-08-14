@@ -2,8 +2,6 @@ package cn.hjf.downloader.sample;
 
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.Handler;
-import android.os.Looper;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.ListView;
 import android.widget.Toast;
@@ -17,7 +15,6 @@ import java.util.Set;
 import cn.hjf.downloader.ErrorListener;
 import cn.hjf.downloader.Listener;
 import cn.hjf.downloader.MiniDownloader;
-import cn.hjf.downloader.Progress;
 import cn.hjf.downloader.Task;
 
 public class MainActivity extends AppCompatActivity {
@@ -25,7 +22,6 @@ public class MainActivity extends AppCompatActivity {
     private ListView taskListView;
     private TaskAdapter taskAdapter;
     private List<Task> taskList = new ArrayList<>();
-    private Handler handler = new Handler(Looper.getMainLooper());
 
     private Listener listener = new Listener() {
         @Override
@@ -39,7 +35,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        public void onProgress(Task task, Progress progress) {
+        public void onProgressUpdate(Task task) {
             refreshData();
         }
 

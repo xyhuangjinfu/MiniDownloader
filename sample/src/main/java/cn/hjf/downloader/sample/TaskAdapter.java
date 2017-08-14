@@ -79,11 +79,7 @@ public class TaskAdapter extends BaseAdapter {
         if (progress != null) {
             holder.pb.setMax(100);
             holder.pb.setProgress((int) (progress.getDownloaded() * 100.0 / progress.getTotal()));
-            if (task.getStatus() == Task.Status.RUNNING) {
-                holder.speedTv.setText(progress.getNetworkSpeed() + "kb/s");
-            } else {
-                holder.speedTv.setText("0kb/s");
-            }
+            holder.speedTv.setText(progress.getNetworkSpeed() + "kb/s");
         } else {
             holder.pb.setMax(0);
             holder.pb.setProgress(0);

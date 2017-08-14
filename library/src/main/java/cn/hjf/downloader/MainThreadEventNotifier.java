@@ -46,11 +46,11 @@ final class MainThreadEventNotifier {
         });
     }
 
-    public void notifyProgress(@NonNull final Task task, @NonNull final Progress progress) {
+    public void notifyProgress(@NonNull final Task task) {
         mainThreadHandler.post(new Runnable() {
             @Override
             public void run() {
-                task.getListener().onProgress(task, progress);
+                task.getListener().onProgressUpdate(task);
             }
         });
     }
