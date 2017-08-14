@@ -43,11 +43,11 @@ public interface Listener {
 
     /**
      * Notify that task progress is updated.
+     * Progress information is stored in {@link Progress}, see {@link Progress#getTotal()}, {@link Progress#getDownloaded()}, {@link Progress#getNetworkSpeed()}.
      *
      * @param task
-     * @param progress
      */
-    void onProgress(Task task, Progress progress);
+    void onProgressUpdate(Task task);
 
     /**
      * Notify that task be stopped.

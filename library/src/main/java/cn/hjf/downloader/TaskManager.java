@@ -134,10 +134,10 @@ final class TaskManager {
      *
      * @param task
      */
-    public void handleProgress(Task task, Progress progress) {
+    public void handleProgress(Task task) {
         synchronized (lock) {
             /** Notify status changed. */
-            eventNotifier.notifyProgress(task, progress);
+            eventNotifier.notifyProgress(task);
         }
     }
 

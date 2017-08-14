@@ -322,7 +322,7 @@ abstract class Worker implements CustomFutureCallable<Task>, ProgressUpdater.Tar
         lastUpdatedTime = time;
         lastUpdatedDownloadedCount = downloaded;
         /** Update progress info. */
-        taskManager.handleProgress(task, task.getProgress());
+        taskManager.handleProgress(task);
     }
 
     /**
