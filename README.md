@@ -26,7 +26,7 @@ MiniDownloader.getInstance().setDebuggable(true);
                     }
 
                     @Override
-                    public void onProgress(Task task, Progress progress) {
+                    public void onProgressUpdate(Task task) {
                     }
 
                     @Override
