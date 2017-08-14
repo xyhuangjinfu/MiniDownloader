@@ -52,6 +52,15 @@ MiniDownloader.getInstance().setDebuggable(true);
 ```
 MiniDownloader.getInstance().start(task);
 ```
+#### Listen task progress update. ####
+```
+@Override
+public void onProgressUpdate(Task task) {
+    Progress progress = task.getProgress();
+    double progressPercentage = progress.getDownloaded() * 1.0 / progress.getTotal();
+    String speedInfo = progress.getNetworkSpeed() + "kb/s";
+}
+```
 #### Stop task. ####
 If you are downloading a large file, but can not downloading util it finish, so you can stop it and continue download at next start up.
 ```
