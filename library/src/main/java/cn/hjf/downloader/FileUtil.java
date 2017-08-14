@@ -19,7 +19,6 @@ package cn.hjf.downloader;
 import android.content.Context;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.util.Log;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -119,10 +118,6 @@ final class FileUtil {
      */
 
     public static boolean createParentDirs(String path) {
-        if (Debug.debug) {
-            Log.e(TAG, "createParentDirs : " + path);
-        }
-
         File file = new File(path);
         if (!file.getParentFile().exists()) {
             return file.getParentFile().mkdirs();

@@ -227,7 +227,7 @@ public final class MiniDownloader {
      * @return
      */
     public List<Task> getStoppedTaskList() {
-        return taskManager.getStoppedTask();
+        return taskManager.getAllStoppedTasks();
     }
 
     /**

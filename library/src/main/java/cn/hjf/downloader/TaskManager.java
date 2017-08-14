@@ -104,6 +104,10 @@ final class TaskManager {
             taskSet.add(task);
             /** Register future of this task. */
             runningTaskFutureMap.put(task, future);
+
+            if (Debug.debug) {
+                Log.d(TAG, "handleWaiting, task:" + task);
+            }
         }
     }
 
@@ -118,6 +122,10 @@ final class TaskManager {
             task.setStatus(Task.Status.RUNNING);
             /** Notify status changed. */
             eventNotifier.notifyStart(task);
+
+            if (Debug.debug) {
+                Log.d(TAG, "handleRunning, task:" + task);
+            }
         }
     }
 
@@ -146,6 +154,10 @@ final class TaskManager {
             eventNotifier.notifyStop(task);
             /** Remove future of this task. */
             runningTaskFutureMap.remove(task);
+
+            if (Debug.debug) {
+                Log.d(TAG, "handleStopped, task:" + task);
+            }
         }
     }
 
@@ -164,6 +176,10 @@ final class TaskManager {
             taskSet.remove(task);
             /** Remove future of this task. */
             runningTaskFutureMap.remove(task);
+
+            if (Debug.debug) {
+                Log.d(TAG, "handleFinished, task:" + task);
+            }
         }
     }
 
@@ -187,6 +203,10 @@ final class TaskManager {
             taskSet.remove(task);
             /** Remove future of this task. */
             runningTaskFutureMap.remove(task);
+
+            if (Debug.debug) {
+                Log.d(TAG, "handleDeleted, task:" + task);
+            }
         }
     }
 
@@ -210,6 +230,10 @@ final class TaskManager {
             taskSet.remove(task);
             /** Remove future of this task. */
             runningTaskFutureMap.remove(task);
+
+            if (Debug.debug) {
+                Log.d(TAG, "handleError, task:" + task + ", error:" + error);
+            }
         }
     }
 
@@ -241,15 +265,20 @@ final class TaskManager {
      *
      * @return
      */
-    public List<Task> getStoppedTask() {
+    public List<Task> getAllStoppedTasks() {
         synchronized (lock) {
-            List<Task> stoppedTask = new ArrayList<>();
+            List<Task> stoppedTasks = new ArrayList<>();
             for (Task task : taskSet) {
                 if (task.getStatus() == Task.Status.STOPPED) {
-                    stoppedTask.add(task);
+                    stoppedTasks.add(task);
                 }
             }
-            return stoppedTask;
+
+            if (Debug.debug) {
+                Log.d(TAG, "getAllStoppedTasks : " + stoppedTasks);
+            }
+
+            return stoppedTasks;
         }
     }
 
@@ -267,7 +296,7 @@ final class TaskManager {
             FileUtil.saveTaskList(context, unfinishedTask);
 
             if (Debug.debug) {
-                Log.e(TAG, "saveAllUnfinishedTasks : " + unfinishedTask);
+                Log.d(TAG, "saveAllUnfinishedTasks : " + unfinishedTask);
             }
         }
     }
