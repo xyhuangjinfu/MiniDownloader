@@ -45,19 +45,24 @@ final class MiniFtp {
     private String user;
     private String password;
     private String file;
-    private String type;
+    private String type = "I";
 
     public MiniFtp(String urlStr) throws Exception {
         URL url = new URL(urlStr);
+
+        /** Parse user info. */
         String userInfo = url.getUserInfo();
-        if (userInfo == null || "".equals(userInfo)) {
-            throw new IllegalArgumentException("Unknown user info.");
+        if (userInfo != null && !"".equals(userInfo)) {
+            String[] userInfoArray = userInfo.split(":");
+            user = userInfoArray[0];
+            password = userInfoArray[1];
         }
-        String[] userInfoArray = userInfo.split(":");
-        user = userInfoArray[0];
-        password = userInfoArray[1];
+
+        /** Parse host and port. */
         commandPort = url.getPort();
         host = url.getHost();
+
+        /** Parse file and type. */
         file = url.getPath();
         if (file.contains(";")) {
             type = file.substring(file.lastIndexOf(";") + 1).replace("type=", "");
@@ -96,8 +101,10 @@ final class MiniFtp {
         if (!resMode.startsWith("227")) {
             throw new Exception("Entering passive mode fail");
         }
+
         /** Get data port */
         dataPort = getPort(resMode);
+        dataSocket = new Socket(host, dataPort);
     }
 
     public long size() throws Exception {
@@ -139,7 +146,7 @@ final class MiniFtp {
             throw new Exception("Download error");
         }
         /** Connect data transfer socket */
-        dataSocket = new Socket(host, dataPort);
+
         dataIS = dataSocket.getInputStream();
         return dataIS;
     }
