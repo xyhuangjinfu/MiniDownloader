@@ -54,9 +54,10 @@ class HttpWorker extends Worker {
         addHeader();
 
         /** Response 206 or 200, download. */
-        if (httpURLConnection.getResponseCode() != HttpURLConnection.HTTP_PARTIAL
-                && httpURLConnection.getResponseCode() != HttpURLConnection.HTTP_OK) {
-            throw new IOException("Server Error!");
+        int responseCode = httpURLConnection.getResponseCode();
+        if (responseCode != HttpURLConnection.HTTP_PARTIAL
+                && responseCode != HttpURLConnection.HTTP_OK) {
+            throw new IOException("Server Error! responseCode : " + responseCode + ", url : " + url);
         }
     }
 
