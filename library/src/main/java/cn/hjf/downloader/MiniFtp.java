@@ -98,21 +98,21 @@ final class MiniFtp {
         }
 
         /** Input user */
-        writeCommand(("USER " + user + "\n").getBytes());
+        writeCommand(("USER " + user + "\r\n").getBytes());
         String resUser = readCommand();
         if (!resUser.startsWith("331")) {
             throw new Exception("Username not okay");
         }
 
         /** Input password */
-        writeCommand(("PASS " + password + "\n").getBytes());
+        writeCommand(("PASS " + password + "\r\n").getBytes());
         String resPass = readCommand();
         if (!resPass.startsWith("230")) {
             throw new Exception("User login fail");
         }
 
         /** PASV mode transfer */
-        writeCommand("PASV\n".getBytes());
+        writeCommand("PASV\r\n".getBytes());
         String resMode = readCommand();
         if (!resMode.startsWith("227")) {
             throw new Exception("Entering passive mode fail");
@@ -125,7 +125,7 @@ final class MiniFtp {
 
     public long size() throws Exception {
         /** Get file size */
-        writeCommand(("SIZE " + file + "\n").getBytes());
+        writeCommand(("SIZE " + file + "\r\n").getBytes());
         String resSize = readCommand();
         if (!resSize.startsWith("213")) {
             throw new Exception("Get file status error.");
@@ -139,7 +139,7 @@ final class MiniFtp {
             return;
         }
         /** Set offset */
-        writeCommand(("REST " + offset + "\n").getBytes());
+        writeCommand(("REST " + offset + "\r\n").getBytes());
         String resRest = readCommand();
         if (!resRest.startsWith("350")) {
             throw new Exception("Partial download error");
@@ -149,14 +149,14 @@ final class MiniFtp {
     public InputStream getInputStream() throws Exception {
         /** Set transfer type */
         if (type != null) {
-            writeCommand(("TYPE " + type + "\n").getBytes());
+            writeCommand(("TYPE " + type + "\r\n").getBytes());
             String resType = readCommand();
             if (!resType.startsWith("200")) {
                 throw new Exception("Type set to " + type + " failed");
             }
         }
         /** Download file */
-        writeCommand(("RETR " + file + "\n").getBytes());
+        writeCommand(("RETR " + file + "\r\n").getBytes());
         String resRetr = readCommand();
         if (!resRetr.startsWith("150")) {
             throw new Exception("Download error");
