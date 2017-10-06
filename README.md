@@ -48,6 +48,20 @@ MiniDownloader.getInstance().setDebuggable(true);
                 },
                 Task.Priority.HIGH);
 ```
+#### If some special charaters in your url or user or password, like @, #, you can use a TaskUrl instead to plain url string. ####
+```
+        Task task = new Task(
+                new FtpTaskUrl(
+                                "192.168.1.7",
+                                21,
+                                "h/&^%$#@?:jf",
+                                "h/&^%$#@?:jf666",
+                                "te&^%$#@st.txt"
+                        ),
+                Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator + "MiniDownloader" + File.separator + "a.txt",
+                listener,
+                errorListener);
+```
 #### Start task. ####
 ```
 MiniDownloader.getInstance().start(task);
