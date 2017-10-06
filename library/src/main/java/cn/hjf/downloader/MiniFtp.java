@@ -339,8 +339,8 @@ final class MiniFtp {
 
     private String readCommand() throws Exception {
         byte[] buffer = new byte[500];
-        commandIS.read(buffer);
-        String response = new String(buffer);
+        int readCount = commandIS.read(buffer);
+        String response = new String(buffer, 0, readCount);
 
         if (Debug.debug) {
             Log.d(TAG, "readCommand : " + response);
