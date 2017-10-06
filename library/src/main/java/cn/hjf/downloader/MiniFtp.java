@@ -20,6 +20,7 @@ import android.util.Log;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
 import java.util.regex.Matcher;
@@ -33,7 +34,7 @@ import java.util.regex.Pattern;
 
 final class MiniFtp {
 
-    private static final String TAG = "MiniFtp";
+    private static final String TAG = Debug.appLogPrefix + "MiniFtp";
 
     private String host;
 
@@ -43,8 +44,8 @@ final class MiniFtp {
     private OutputStream commandOS;
 
     private Socket dataSocket;
-    private int dataPort;
     private InputStream dataIS;
+    private ServerSocket serverSocket;
 
     private String user;
     private String password;
@@ -115,12 +116,50 @@ final class MiniFtp {
         writeCommand("PASV\r\n".getBytes());
         String resMode = readCommand();
         if (!resMode.startsWith("227")) {
-            throw new Exception("Entering passive mode fail");
+            /** PASV command not implement, try to change to active mode. */
+            if (resMode.startsWith("502")) {
+                if (Debug.debug) {
+                    Log.d(TAG, "PASV command not implement, try to change to active mode");
+                }
+                changeToActiveMode();
+                return;
+            } else {
+                throw new Exception("Entering passive mode fail");
+            }
         }
 
-        /** Get data port */
-        dataPort = getPort(resMode);
-        dataSocket = new Socket(host, dataPort);
+        /** Made data socket connected. */
+        dataSocket = new Socket(host, getPort(resMode));
+    }
+
+    private void changeToActiveMode() throws Exception {
+        StringBuilder hostPort = new StringBuilder(23);
+
+        String ip = NetworkUtil.getIPV4();
+        if (ip == null) {
+            throw new Exception("Change ftp to active mode, but get ip failed");
+        }
+        String[] ips = ip.split("\\.");
+        for (int i = 0; i < ips.length; i++) {
+            hostPort.append(ips[i]);
+            hostPort.append(",");
+        }
+
+        serverSocket = NetworkUtil.availablePort();
+        if (serverSocket == null) {
+            throw new Exception("Change ftp to active mode, but no available port exist");
+        }
+        int localPort = serverSocket.getLocalPort();
+
+        hostPort.append((localPort & 0xFF00) >>> 8);
+        hostPort.append(",");
+        hostPort.append((localPort & 0xFF));
+
+        writeCommand(("PORT " + hostPort + "\r\n").getBytes());
+        String resMode = readCommand();
+        if (!resMode.startsWith("200")) {
+            throw new Exception("Change to active mode failed");
+        }
     }
 
     public long size() throws Exception {
@@ -157,11 +196,16 @@ final class MiniFtp {
         }
         /** Download file */
         writeCommand(("RETR " + file + "\r\n").getBytes());
+
+        /** Wait to ftp server connect, Made data socket connected. */
+        if (serverSocket != null) {
+            dataSocket = serverSocket.accept();
+        }
+
         String resRetr = readCommand();
         if (!resRetr.startsWith("150")) {
             throw new Exception("Download error");
         }
-        /** Connect data transfer socket */
 
         dataIS = dataSocket.getInputStream();
         return dataIS;
@@ -170,6 +214,9 @@ final class MiniFtp {
     public void close() throws Exception {
         dataIS.close();
         dataSocket.close();
+        if (serverSocket != null) {
+            serverSocket.close();
+        }
 
         commandIS.close();
         commandOS.close();
@@ -183,7 +230,7 @@ final class MiniFtp {
 
     private void writeCommand(byte[] data) throws Exception {
         if (Debug.debug) {
-            Log.e(TAG, "writeCommand : " + new String(data));
+            Log.d(TAG, "writeCommand : " + new String(data));
         }
 
         commandOS.write(data);
@@ -196,7 +243,7 @@ final class MiniFtp {
         String response = new String(buffer);
 
         if (Debug.debug) {
-            Log.e(TAG, "readCommand : " + response);
+            Log.d(TAG, "readCommand : " + response);
         }
 
         return response;
