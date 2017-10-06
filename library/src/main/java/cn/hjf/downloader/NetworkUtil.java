@@ -32,13 +32,14 @@ import java.util.Enumeration;
 
 public final class NetworkUtil {
 
-    private static final String TAG = "NetworkUtil";
+    private static final String TAG = Debug.appLogPrefix + "NetworkUtil";
 
     /**
      * Get ipv4 address.
      *
      * @return
      */
+    @Nullable
     public static String getIPV4() {
         try {
             Enumeration<NetworkInterface> net = NetworkInterface.getNetworkInterfaces();
@@ -50,7 +51,7 @@ public final class NetworkUtil {
                     if (!a.isLoopbackAddress()
                             && !a.getHostAddress().contains(":")) {
                         if (Debug.debug) {
-                            Log.e(TAG, "getIPV4 : " + a.getHostAddress());
+                            Log.d(TAG, "getIPV4 : " + a.getHostAddress());
                         }
                         return a.getHostAddress();
                     }
@@ -74,7 +75,7 @@ public final class NetworkUtil {
             try {
                 ServerSocket s = new ServerSocket(i);
                 if (Debug.debug) {
-                    Log.e(TAG, "availablePort : " + i);
+                    Log.d(TAG, "availablePort : " + i);
                 }
                 return s;
             } catch (IOException e) {
