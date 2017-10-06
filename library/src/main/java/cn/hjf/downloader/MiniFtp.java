@@ -16,6 +16,8 @@
 
 package cn.hjf.downloader;
 
+import android.util.Log;
+
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
@@ -30,6 +32,8 @@ import java.util.regex.Pattern;
  */
 
 final class MiniFtp {
+
+    private static final String TAG = "MiniFtp";
 
     private String host;
 
@@ -68,6 +72,18 @@ final class MiniFtp {
             type = file.substring(file.lastIndexOf(";") + 1).replace("type=", "");
             file = file.substring(0, file.lastIndexOf(";"));
         }
+    }
+
+    public MiniFtp(FtpTaskUrl ftpTaskUrl) {
+        /** Parse user info. */
+        user = ftpTaskUrl.user;
+        password = ftpTaskUrl.password;
+        /** Parse host and port. */
+        commandPort = ftpTaskUrl.port;
+        host = ftpTaskUrl.host;
+        /** Parse file and type. */
+        file = ftpTaskUrl.path;
+        type = ftpTaskUrl.type;
     }
 
     public void connect() throws Exception {
@@ -166,6 +182,10 @@ final class MiniFtp {
      */
 
     private void writeCommand(byte[] data) throws Exception {
+        if (Debug.debug) {
+            Log.e(TAG, "writeCommand : " + new String(data));
+        }
+
         commandOS.write(data);
         commandOS.flush();
     }
@@ -173,7 +193,13 @@ final class MiniFtp {
     private String readCommand() throws Exception {
         byte[] buffer = new byte[500];
         commandIS.read(buffer);
-        return new String(buffer);
+        String response = new String(buffer);
+
+        if (Debug.debug) {
+            Log.e(TAG, "readCommand : " + response);
+        }
+
+        return response;
     }
 
     private static int getPort(String response) {
