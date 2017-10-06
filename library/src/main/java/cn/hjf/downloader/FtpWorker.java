@@ -50,7 +50,7 @@ class FtpWorker extends Worker {
     @Override
     protected void setProgressIfNecessary() throws Exception {
         if (task.getProgress() == null) {
-            Progress progress = new Progress(miniFtp.size());
+            Progress progress = new Progress(miniFtp.fileSize());
             /** Set progress for task. */
             task.setProgress(progress);
         }
@@ -59,7 +59,7 @@ class FtpWorker extends Worker {
     @Override
     protected InputStream getInputStream() throws Exception {
         if (task.getProgress().getDownloaded() != 0) {
-            miniFtp.rest(task.getProgress().getDownloaded());
+            miniFtp.setProgress(task.getProgress().getDownloaded());
         }
         return miniFtp.getInputStream();
     }

@@ -52,6 +52,12 @@ final class MiniFtp {
     private String file;
     private String type = "I";
 
+    /**
+     * Initial MiniFtp by url string.
+     *
+     * @param urlStr
+     * @throws Exception
+     */
     public MiniFtp(String urlStr) throws Exception {
         URL url = new URL(urlStr);
 
@@ -75,6 +81,11 @@ final class MiniFtp {
         }
     }
 
+    /**
+     * Initial MiniFtp by FtpTaskUrl.
+     *
+     * @param ftpTaskUrl
+     */
     public MiniFtp(FtpTaskUrl ftpTaskUrl) {
         /** Parse user info. */
         user = ftpTaskUrl.user;
@@ -87,52 +98,152 @@ final class MiniFtp {
         type = ftpTaskUrl.type;
     }
 
-    public void connect() throws Exception {
-        commandSocket = new Socket(host, commandPort);
-        commandIS = commandSocket.getInputStream();
-        commandOS = commandSocket.getOutputStream();
+    /**
+     * **********************************************************************************************************
+     * **********************************************************************************************************
+     */
 
-        /** Connect server */
+    /**
+     * Connect to ftp server.
+     *
+     * @throws Exception
+     */
+    public void connect() throws Exception {
+        /** Build command transfer channel. */
+        initCommandTransfer();
+
+        /** Connect server. */
+        hello();
+        /** Send user. */
+        user();
+        /** Send password. */
+        pass();
+        /** Try to enter PASV mode. */
+        if (!pasv()) {
+            if (Debug.debug) {
+                Log.d(TAG, "PASV command not implement, try to change to active mode");
+            }
+            /** PASV mode not implemented, enter active mode. */
+            port();
+        }
+
+    }
+
+    /**
+     * Query file size.
+     *
+     * @return
+     * @throws Exception
+     */
+    public long fileSize() throws Exception {
+        return size();
+    }
+
+    /**
+     * Reset download progress.
+     *
+     * @param offset
+     * @throws Exception
+     */
+    public void setProgress(long offset) throws Exception {
+        if (offset <= 0) {
+            return;
+        }
+        /** Set offset */
+        rest(offset);
+    }
+
+    /**
+     * Get data transfer InputStream.
+     *
+     * @return
+     * @throws Exception
+     */
+    public InputStream getInputStream() throws Exception {
+        /** Set transfer type */
+        type();
+
+        /** Download file */
+        retr();
+
+        dataIS = dataSocket.getInputStream();
+        return dataIS;
+    }
+
+    /**
+     * Close MiniFtp, and release relative resources.
+     *
+     * @throws Exception
+     */
+    public void close() throws Exception {
+        if (dataIS != null) {
+            dataIS.close();
+        }
+        if (dataSocket != null) {
+            dataSocket.close();
+        }
+        if (serverSocket != null) {
+            serverSocket.close();
+        }
+
+        commandIS.close();
+        commandOS.close();
+        commandSocket.close();
+    }
+
+    /**
+     * **********************************************************************************************************
+     * **********************************************************************************************************
+     */
+
+    private void hello() throws Exception {
         String resConnect = readCommand();
         if (!resConnect.startsWith("220")) {
             throw new Exception("Server not ready : " + resConnect);
         }
+    }
 
-        /** Input user */
+    private void user() throws Exception {
         writeCommand(("USER " + user + "\r\n").getBytes());
         String resUser = readCommand();
         if (!resUser.startsWith("331")) {
             throw new Exception("Username not okay");
         }
+    }
 
-        /** Input password */
+    private void pass() throws Exception {
         writeCommand(("PASS " + password + "\r\n").getBytes());
         String resPass = readCommand();
         if (!resPass.startsWith("230")) {
             throw new Exception("User login fail");
         }
+    }
 
-        /** PASV mode transfer */
+    /**
+     * Enter PASV mode.
+     *
+     * @return Whether tfp server implemented PASV command. true-implemented, false-not implemented.
+     * @throws Exception
+     */
+    private boolean pasv() throws Exception {
         writeCommand("PASV\r\n".getBytes());
         String resMode = readCommand();
+
+        if (resMode.startsWith("502")) {
+            return false;
+        }
+
         if (!resMode.startsWith("227")) {
-            /** PASV command not implement, try to change to active mode. */
-            if (resMode.startsWith("502")) {
-                if (Debug.debug) {
-                    Log.d(TAG, "PASV command not implement, try to change to active mode");
-                }
-                changeToActiveMode();
-                return;
-            } else {
-                throw new Exception("Entering passive mode fail");
-            }
+            throw new Exception("Entering passive mode fail");
         }
 
         /** Made data socket connected. */
         dataSocket = new Socket(host, getPort(resMode));
+
+        return true;
     }
 
-    private void changeToActiveMode() throws Exception {
+    private void port() throws Exception {
         StringBuilder hostPort = new StringBuilder(23);
 
         String ip = NetworkUtil.getIPV4();
@@ -162,7 +273,7 @@ final class MiniFtp {
         }
     }
 
-    public long size() throws Exception {
+    private long size() throws Exception {
         /** Get file size */
         writeCommand(("SIZE " + file + "\r\n").getBytes());
         String resSize = readCommand();
@@ -173,10 +284,17 @@ final class MiniFtp {
         return Long.valueOf(lenStr.trim());
     }
 
-    public void rest(long offset) throws Exception {
-        if (offset <= 0) {
-            return;
+    private void type() throws Exception {
+        if (type != null) {
+            writeCommand(("TYPE " + type + "\r\n").getBytes());
+            String resType = readCommand();
+            if (!resType.startsWith("200")) {
+                throw new Exception("Type set to " + type + " failed");
+            }
         }
+    }
+
+    private void rest(long offset) throws Exception {
         /** Set offset */
         writeCommand(("REST " + offset + "\r\n").getBytes());
         String resRest = readCommand();
@@ -185,16 +303,7 @@ final class MiniFtp {
         }
     }
 
-    public InputStream getInputStream() throws Exception {
-        /** Set transfer type */
-        if (type != null) {
-            writeCommand(("TYPE " + type + "\r\n").getBytes());
-            String resType = readCommand();
-            if (!resType.startsWith("200")) {
-                throw new Exception("Type set to " + type + " failed");
-            }
-        }
-        /** Download file */
+    private void retr() throws Exception {
         writeCommand(("RETR " + file + "\r\n").getBytes());
 
         /** Wait to ftp server connect, Made data socket connected. */
@@ -206,27 +315,18 @@ final class MiniFtp {
         if (!resRetr.startsWith("150")) {
             throw new Exception("Download error");
         }
-
-        dataIS = dataSocket.getInputStream();
-        return dataIS;
-    }
-
-    public void close() throws Exception {
-        dataIS.close();
-        dataSocket.close();
-        if (serverSocket != null) {
-            serverSocket.close();
-        }
-
-        commandIS.close();
-        commandOS.close();
-        commandSocket.close();
     }
 
     /**
      * **********************************************************************************************************
      * **********************************************************************************************************
      */
+
+    private void initCommandTransfer() throws Exception {
+        commandSocket = new Socket(host, commandPort);
+        commandIS = commandSocket.getInputStream();
+        commandOS = commandSocket.getOutputStream();
+    }
 
     private void writeCommand(byte[] data) throws Exception {
         if (Debug.debug) {
