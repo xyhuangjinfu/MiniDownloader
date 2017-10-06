@@ -74,6 +74,18 @@ final class MiniFtp {
         }
     }
 
+    public MiniFtp(FtpTaskUrl ftpTaskUrl) {
+        /** Parse user info. */
+        user = ftpTaskUrl.user;
+        password = ftpTaskUrl.password;
+        /** Parse host and port. */
+        commandPort = ftpTaskUrl.port;
+        host = ftpTaskUrl.host;
+        /** Parse file and type. */
+        file = ftpTaskUrl.path;
+        type = ftpTaskUrl.type;
+    }
+
     public void connect() throws Exception {
         commandSocket = new Socket(host, commandPort);
         commandIS = commandSocket.getInputStream();

@@ -39,7 +39,11 @@ class FtpWorker extends Worker {
 
     @Override
     protected void initNetworkConnect() throws Exception {
-        miniFtp = new MiniFtp(task.getUrlStr());
+        if (task.getTaskUrl() != null) {
+            miniFtp = new MiniFtp((FtpTaskUrl) task.getTaskUrl());
+        } else {
+            miniFtp = new MiniFtp(task.getUrlStr());
+        }
         miniFtp.connect();
     }
 

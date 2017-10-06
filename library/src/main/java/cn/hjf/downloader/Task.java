@@ -17,6 +17,7 @@
 package cn.hjf.downloader;
 
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 
 import java.io.Serializable;
 
@@ -69,6 +70,7 @@ public final class Task implements Serializable, Comparable<Task> {
         }
     }
 
+    private final TaskUrl taskUrl;
     private final String urlStr;
     private final String filePath;
     private transient Listener listener;
@@ -87,7 +89,7 @@ public final class Task implements Serializable, Comparable<Task> {
             @NonNull String filePath,
             @NonNull Listener listener,
             @NonNull ErrorListener errorListener) {
-        this(urlStr, filePath, listener, errorListener, Priority.NORMAL);
+        this(null, urlStr, filePath, listener, errorListener, Priority.NORMAL);
     }
 
     public Task(
@@ -96,34 +98,63 @@ public final class Task implements Serializable, Comparable<Task> {
             @NonNull Listener listener,
             @NonNull ErrorListener errorListener,
             @NonNull Priority priority) {
-        checkTask(urlStr, filePath, listener, errorListener, priority);
-        this.urlStr = urlStr;
+        this(null, urlStr, filePath, listener, errorListener, priority);
+    }
+
+    public Task(
+            @NonNull TaskUrl taskUrl,
+            @NonNull String filePath,
+            @NonNull Listener listener,
+            @NonNull ErrorListener errorListener) {
+        this(taskUrl, null, filePath, listener, errorListener, Priority.NORMAL);
+    }
+
+    public Task(
+            @NonNull TaskUrl taskUrl,
+            @NonNull String filePath,
+            @NonNull Listener listener,
+            @NonNull ErrorListener errorListener,
+            @NonNull Priority priority) {
+        this(taskUrl, null, filePath, listener, errorListener, priority);
+    }
+
+    private Task(
+            @Nullable TaskUrl taskUrl,
+            @Nullable String urlStr,
+            @NonNull String filePath,
+            @NonNull Listener listener,
+            @NonNull ErrorListener errorListener,
+            @NonNull Priority priority) {
+
+        checkTask(taskUrl, urlStr, filePath, listener, errorListener, priority);
+
+        this.taskUrl = taskUrl;
+        this.urlStr = taskUrl != null ? taskUrl.toUrl() : urlStr;
+
         this.filePath = filePath;
         this.listener = listener;
         this.errorListener = errorListener;
         this.priority = priority;
     }
 
-    private void checkTask(String urlStr,
+    private void checkTask(TaskUrl taskUrl,
+                           String urlStr,
                            String filePath,
                            Listener listener,
                            ErrorListener errorListener,
                            Priority priority) {
-        if (urlStr == null) {
-            throw new IllegalArgumentException("urlStr must not be null");
+        if (taskUrl == null
+                && (urlStr == null || "".equals(urlStr))) {
+            throw new IllegalArgumentException("taskUrl or urlStr, at least one of them is not null.");
         }
-        if (filePath == null) {
-            throw new IllegalArgumentException("filePath must not be null");
-        }
-        if (listener == null) {
-            throw new IllegalArgumentException("listener must not be null");
-        }
-        if (errorListener == null) {
-            throw new IllegalArgumentException("errorListener must not be null");
-        }
-        if (priority == null) {
-            throw new IllegalArgumentException("priority must not be null");
-        }
+        CheckUtil.checkStringNotNullOrEmpty(filePath, "filePath must not be null");
+        CheckUtil.checkNotNull(listener, "listener must not be null");
+        CheckUtil.checkNotNull(errorListener, "errorListener must not be null");
+        CheckUtil.checkNotNull(priority, "priority must not be null");
+    }
+
+    public TaskUrl getTaskUrl() {
+        return taskUrl;
     }
 
     public String getUrlStr() {
@@ -202,7 +233,12 @@ public final class Task implements Serializable, Comparable<Task> {
     @Override
     public int hashCode() {
         int result = 17;
-        result = 31 * result + urlStr.hashCode();
+        if (urlStr != null) {
+            result = 31 * result + urlStr.hashCode();
+        }
+        if (taskUrl != null) {
+            result = 31 * result + taskUrl.hashCode();
+        }
         result = 31 * result + filePath.hashCode();
         return result;
     }
